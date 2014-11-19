@@ -81,9 +81,8 @@
 
 (defun perfect-margin--init-window-margins ()
   "Calculate target window margins as if there is only one window on frame."
-  (let ((init-margin-width (round (max 0 (/ (- (frame-width) perfect-margin-visible-width) 2))))
-        (left-min (if (perfect-margin-with-linum-p) 3 0)))
-    (cons (max left-min init-margin-width) init-margin-width)
+  (let ((init-margin-width (round (max 0 (/ (- (frame-width) perfect-margin-visible-width) 2)))))
+    (cons init-margin-width init-margin-width)
     ))
 
 (defun perfect-margin--auto-margin-basic-p (win)
@@ -121,8 +120,9 @@
              (= (or (cdr (window-margins win)) 0)  (cdr init-window-margins)))
         ;; the newly split-off window on the right hand side, which carries init-window-margins
         (set-window-margins win
-                            (max 0 (- (car init-window-margins)
-                                      (round (* perfect-margin-visible-width minimap-width-fraction))))
+                            (max (if (perfect-margin-with-linum-p) 3 0)
+                                 (- (car init-window-margins)
+                                    (round (* perfect-margin-visible-width minimap-width-fraction))))
                             (cdr init-window-margins)))
        (t
         (set-window-margins win (if (perfect-margin-with-linum-p) 3 0) 0))))
@@ -141,8 +141,9 @@
              (= (or (car (window-margins win)) 0) (car init-window-margins))
              (= (or (cdr (window-margins win)) 0) (cdr init-window-margins)))
         (set-window-margins win
-                            (max 0 (- (car init-window-margins)
-                                      (round (* perfect-margin-visible-width minimap-width-fraction))))
+                            (max (if (perfect-margin-with-linum-p) 3 0)
+                                 (- (car init-window-margins)
+                                    (round (* perfect-margin-visible-width minimap-width-fraction))))
                             (cdr init-window-margins))
         )
        ((= (frame-width) (perfect-margin--width-with-margins win))
@@ -160,27 +161,13 @@
       (cond
        ((not (>= (nth 2 win-edges) (frame-width)))
         (set-window-margins win (if (perfect-margin-with-linum-p) 3 0) 0))
-       ((= (frame-width)
-           (+ (round (* perfect-margin-visible-width minimap-width-fraction))
-              (window-width win)))
+       (t
         (set-window-margins win
-                            (max 0 (- (car init-window-margins)
-                                      (round (* perfect-margin-visible-width minimap-width-fraction))))
+                            (max (if (perfect-margin-with-linum-p) 3 0)
+                                 (- (car init-window-margins)
+                                    (round (* perfect-margin-visible-width minimap-width-fraction))))
                             (cdr init-window-margins)))
-       ((and (perfect-margin-with-linum-p)
-             (= (frame-width)
-                (+ (round (* perfect-margin-visible-width minimap-width-fraction))
-                   (window-width win)
-                   3)))
-        (set-window-margins win
-                            (max 0 (- (car init-window-margins)
-                                      (round (* perfect-margin-visible-width minimap-width-fraction))))
-                            (cdr init-window-margins)))
-       ((= (frame-width) (perfect-margin--width-with-margins win))
-        (set-window-margins win (car init-window-margins) (cdr init-window-margins))
-        )
-       ;; the main window at the right position, do nothing
-       (t t)))
+       ))
      ((= (frame-width) (perfect-margin--width-with-margins win))
       (set-window-margins win (car init-window-margins) (cdr init-window-margins)))
      (t
@@ -255,8 +242,7 @@
       (ad-deactivate 'linum-update-window)
       (when (eq linum-format 'perfect-margin--linum-format)
         (setq linum-format 'dynamic))
-      ;;1      (linum-update-current)
-      )
+      (linum-update-current))
     (when (perfect-margin-with-minimap-p)
       (ad-deactivate 'minimap-update))
     (remove-hook 'window-configuration-change-hook 'perfect-margin-margin-windows)
