@@ -33,3 +33,17 @@ Change `perfect-margin--visible-width` and `Apply and Save`. That's it.
 perfect-margin works well with the original minimap, however, to get a even much better experience, use my enhanced [minimap](https://github.com/mpwang/emacs-minimap).
 
 I added support for perfect-mode to prevent the main window from "blinking" when the minimap is created.
+
+# Additional binding on margin area
+
+You can place this in your init.el to make mouse wheel scroll on margin area just like it scroll on the visible window.
+
+    (dolist (margin '("<left-margin> " "<right-margin> "))
+      (global-set-key (kbd (concat margin "<mouse-1>")) 'ignore)
+      (global-set-key (kbd (concat margin "<mouse-3>")) 'ignore)
+      (dolist (multiple '("" "double-" "triple-"))
+          (global-set-key (kbd (concat margin "<" multiple "wheel-up>")) 'mwheel-scroll)
+          (global-set-key (kbd (concat margin "<" multiple "wheel-down>")) 'mwheel-scroll)
+          ))
+
+Change the mouse binding if necessary.
