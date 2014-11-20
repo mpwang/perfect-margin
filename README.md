@@ -3,9 +3,11 @@ perfect-margin
 
 Perfect-margin is a global minor mode to auto center windows, work with minimap and/or linum-mode.
 
-A picture is more than one thousand words, here is how it looks like.
+A picture is more than one thousand words, here is how it looks like with minimap and linum-mode.
 
 <span class="image-600">![perfect-margin](https://raw.githubusercontent.com/mpwang/mpwang.github.io/master/media/files/perfect-margin.gif)</span>
+
+_theme:[moe-theme](https://github.com/kuanyui/moe-theme.el)_
 
 # Usage
 
@@ -48,4 +50,5 @@ You can place this in your init.el to make mouse wheel scroll on margin area jus
           (global-set-key (kbd (concat margin "<" multiple "wheel-down>")) 'mwheel-scroll)
           ))
 
-Change the mouse binding if necessary.
+
+## Emacs Rocks and happy hacking!
