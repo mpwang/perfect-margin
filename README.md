@@ -19,6 +19,8 @@ To make it permanent add this to your init.el after require.
 
     (perfect-margin-mode 1)
 
+Note: when using together with minimap or linum, make sure you place config for perfect-margin *AFTER* minimap and linum.
+
 # Customization
 
 Via `M-x customize-group` and enter perfect-margin.
