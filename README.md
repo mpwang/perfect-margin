@@ -25,11 +25,11 @@ Note: when using together with minimap or linum, make sure you place config for 
 
 Via `M-x customize-group` and enter perfect-margin.
 
-Change `perfect-margin--visible-width` and `Apply and Save`. That's it.
+Change `perfect-margin-visible-width` and `Apply and Save`. That's it.
 
-*Or* you can change the visible window width by setup `perfect-margin--visible-width` on the init.el.
+*Or* you can change the visible window width by setup `perfect-margin-visible-width` on the init.el.
 
-    (setq perfect-margin--visible-width 128)
+    (setq perfect-margin-visible-width 128)
 
 # Better minimap
 perfect-margin works well with the original minimap, however, to get a even much better experience, use my enhanced [minimap](https://github.com/mpwang/emacs-minimap).
