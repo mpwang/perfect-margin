@@ -126,8 +126,12 @@
 
 (defun perfect-margin--auto-margin-basic-p (win)
   "Conditions for filtering window (WIN) to setup margin."
-  (and (not (string-match "minibuf" (buffer-name (window-buffer win))))
-       (not (window-minibuffer-p win))))
+  (let ((name (buffer-name (window-buffer win))))
+    (and (not (string-match "minibuf" name))
+         (not (window-minibuffer-p win))
+         (not (string-match "*helm " name))
+         (not (string-match "*which-key*" name))
+         )))
 
 ;;----------------------------------------------------------------------------
 ;; Minimap
@@ -222,11 +226,12 @@
     (cond
      ((perfect-margin-with-minimap-p) (perfect-margin-minimap-margin-window win))
      ((and (perfect-margin--auto-margin-basic-p win)
-           (= (frame-width) (perfect-margin--width-with-margins win)))
+           (<= (frame-width) (perfect-margin--width-with-margins win)))
       (let ((init-window-margins (perfect-margin--init-window-margins)))
         (set-window-margins win (car init-window-margins) (cdr init-window-margins))))
-     (t (set-window-margins win (if (perfect-margin-with-linum-p) 3 0) 0))
-     )))
+     (t (set-window-margins win (if (perfect-margin-with-linum-p) 3 0) 0)))
+    (set-window-fringes win 0 0)
+    ))
 
 ;;----------------------------------------------------------------------------
 ;; Advice
