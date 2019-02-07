@@ -131,6 +131,7 @@
          (not (window-minibuffer-p win))
          (not (string-match "*helm " name))
          (not (string-match "*which-key*" name))
+         (not (string-match "*spacemacs" name))
          )))
 
 ;;----------------------------------------------------------------------------
