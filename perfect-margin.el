@@ -234,6 +234,11 @@
     (set-window-fringes win 0 0)
     ))
 
+(defun perfect-margin-margin-frame (&optional _)
+  (when (frame-size-changed-p)
+    (perfect-margin-margin-windows))
+  )
+
 ;;----------------------------------------------------------------------------
 ;; Advice
 ;;----------------------------------------------------------------------------
@@ -271,8 +276,10 @@
 (define-minor-mode perfect-margin-mode
   ""
   :init-value nil
+  :lighter "©"
   :global t
   (if perfect-margin-mode
+      ;; add hook and activate
       (progn
         (when (perfect-margin-with-linum-p)
           (ad-activate 'linum-update-window)
@@ -281,8 +288,10 @@
         (when (perfect-margin-with-minimap-p)
           (ad-activate 'minimap-update))
         (add-hook 'window-configuration-change-hook 'perfect-margin-margin-windows)
+        (add-hook 'window-size-change-functions 'perfect-margin-margin-frame)
         (perfect-margin-margin-windows)
         )
+    ;; remove hook and restore margin
     (when (perfect-margin-with-linum-p)
       (ad-deactivate 'linum-update-window)
       (when (eq linum-format 'perfect-margin--linum-format)
@@ -291,8 +300,9 @@
     (when (perfect-margin-with-minimap-p)
       (ad-deactivate 'minimap-update))
     (remove-hook 'window-configuration-change-hook 'perfect-margin-margin-windows)
+    (remove-hook 'window-size-change-functions 'perfect-margin-margin-frame)
     (dolist (window (window-list))
-      (set-window-margins window (car (window-margins window)) 0))
+      (set-window-margins window 0 0))
     ))
 
 (provide 'perfect-margin)
