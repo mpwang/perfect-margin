@@ -84,7 +84,7 @@
 
 (defun perfect-margin-with-minimap-p ()
   "Whether minimap is found."
-  (boundp 'minimap-mode))
+  (bound-and-true-p minimap-mode))
 
 ;;----------------------------------------------------------------------------
 ;; Private functions
@@ -99,9 +99,9 @@
 (defun perfect-margin--minimap-window-p (win)
   "Judge if the window(WIN) is the minimap window itself, when it's live."
   (when (and (perfect-margin-with-minimap-p)
-             minimap-window
-             (window-live-p minimap-window))
-    (let ((minimap-edges (window-edges minimap-window))
+             (minimap-get-window)
+             (window-live-p (minimap-get-window)))
+    (let ((minimap-edges (window-edges (minimap-get-window)))
           (current-edges (window-edges win)))
       (and (= (nth 0 minimap-edges) (nth 0 current-edges))
            (= (nth 1 minimap-edges) (nth 1 current-edges))
@@ -110,9 +110,9 @@
 (defun perfect-margin--minimap-left-adjacent-covered-p (win)
   "Judge if the window(WIN) is left adjacent to minimap window."
   (when (and (perfect-margin-with-minimap-p)
-             minimap-window
-             (window-live-p minimap-window))
-    (let ((minimap-edges (window-edges minimap-window))
+             (minimap-get-window)
+             (window-live-p (minimap-get-window)))
+    (let ((minimap-edges (window-edges (minimap-get-window)))
           (current-edges (window-edges win)))
       (and (= (nth 2 minimap-edges) (nth 0 current-edges))
            (<= (nth 1 minimap-edges) (nth 1 current-edges))
@@ -139,13 +139,13 @@
 ;;----------------------------------------------------------------------------
 (defun perfect-margin-minimap-margin-window (win)
   "Setup window margins with minimap at different stage.  WIN will be any visible window, including the minimap window."
-  ;; Hint: do not reply on (window-width minimap-window)
+  ;; Hint: do not reply on (window-width (minimap-get-window))
   (let ((init-window-margins (perfect-margin--init-window-margins))
         (win-edges (window-edges win)))
     (cond
      ((not (perfect-margin--auto-margin-basic-p win))
       (set-window-margins win (if (perfect-margin-with-linum-p) 3 0) 0))
-     ((not minimap-window)
+     ((not (minimap-get-window))
       ;; minimap-window is not available
       (cond
        ((= (frame-width) (perfect-margin--width-with-margins win))
@@ -170,10 +170,10 @@
                             (cdr init-window-margins)))
        (t
         (set-window-margins win (if (perfect-margin-with-linum-p) 3 0) 0))))
-     ((string-match minimap-buffer-name-prefix (buffer-name (window-buffer win)))
+     ((string-match minimap-buffer-name (buffer-name (window-buffer win)))
       ;; catch and don't set minimap window
       )
-     ((not (window-live-p minimap-window))
+     ((not (window-live-p (minimap-get-window)))
       ;; minimap-window is not live yet
       (cond
        ((and (= (nth 0 win-edges) 0)
@@ -264,10 +264,10 @@
 
 (defadvice minimap-update (after minimap-update-no-fringe nil)
   "Prevent fringe overlay of target buffer from drawing on `minimap-window'."
-  (when (and  minimap-window
-              (window-live-p minimap-window)
+  (when (and  (minimap-get-window)
+              (window-live-p (minimap-get-window))
               minimap-hide-fringes)
-    (set-window-fringes minimap-window 0 0)))
+    (set-window-fringes (minimap-get-window) 0 0)))
 
 ;;----------------------------------------------------------------------------
 ;; MINOR mode definition
