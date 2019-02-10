@@ -7,7 +7,7 @@ A picture is more than one thousand words, here is how it looks like with minima
 
 <span class="image-600">![perfect-margin](https://raw.githubusercontent.com/mpwang/perfect-margin/master/perfect-margin.gif)</span>
 
-_theme: doom-dracula from beautiflu [doom-themes](https://github.com/hlissner/emacs-doom-themes)_
+_theme: doom-dracula from beautiful [doom-themes](https://github.com/hlissner/emacs-doom-themes)_
 
 [minimap](http://elpa.gnu.org/packages/minimap.html) from MELPA
 
