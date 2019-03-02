@@ -49,11 +49,6 @@
 ;;
 ;; (setq perfect-margin-visible-width 128)
 ;;
-;; # Better minimap
-;; perfect-margin works well with the original minimap, however, to get a even much better experience, use my enhanced [minimap](https://github.com/mpwang/emacs-minimap).
-;;
-;; I added support for perfect-mode to prevent the main window from "blinking" when the minimap is created.
-;;
 ;; # Additional binding on margin area
 ;;
 ;; You can place this in your init.el to make mouse wheel scroll on margin area just like it scroll on the visible window.
@@ -63,8 +58,7 @@
 ;;   (global-set-key (kbd (concat margin "<mouse-3>")) 'ignore)
 ;;   (dolist (multiple '("" "double-" "triple-"))
 ;;     (global-set-key (kbd (concat margin "<" multiple "wheel-up>")) 'mwheel-scroll)
-;;     (global-set-key (kbd (concat margin "<" multiple "wheel-down>")) 'mwheel-scroll)
-;;     ))
+;;     (global-set-key (kbd (concat margin "<" multiple "wheel-down>")) 'mwheel-scroll)))
 
 ;;; Code:
 
@@ -78,9 +72,26 @@
   "Auto center windows, work with minimap and/or linum-mode."
   :group 'emacs)
 
+(defcustom perfect-margin-lighter " \u24c2"
+  "Mode-line indicator for symbol `perfect-margin-mode'."
+  :type '(choice (const :tag "No lighter" "") string)
+  :safe 'stringp
+  :group 'perfect-margin)
+
 (defcustom perfect-margin-visible-width 128
-  "The visible width of main window to be keep at center."
-  :type 'integer
+  "The visible width of main window to be kept at center."
+  :group 'perfect-margin)
+
+(defcustom perfect-margin-ignore-regexps
+  '("^minibuf" "^[*]")
+  "List of strings to determine if window is ignored.
+Each string is used as regular expression to match the window buffer name."
+  :group 'perfect-margin)
+
+(defcustom perfect-margin-ignore-filters
+  '(window-minibuffer-p)
+  "List of functions to determine if window is ignored.
+Each function is called with window as its sole arguemnt."
   :group 'perfect-margin)
 
 ;;----------------------------------------------------------------------------
@@ -129,28 +140,26 @@
 (defun perfect-margin--init-window-margins ()
   "Calculate target window margins as if there is only one window on frame."
   (let ((init-margin-width (round (max 0 (/ (- (frame-width) perfect-margin-visible-width) 2)))))
-    (cons init-margin-width init-margin-width)
-    ))
+    (cons init-margin-width init-margin-width)))
 
-(defun perfect-margin--auto-margin-basic-p (win)
+(defun perfect-margin--auto-margin-ignore-p (win)
   "Conditions for filtering window (WIN) to setup margin."
   (let ((name (buffer-name (window-buffer win))))
-    (and (not (string-match "minibuf" name))
-         (not (window-minibuffer-p win))
-         (not (string-match "*helm " name))
-         (not (string-match "*which-key*" name))
-         (not (string-match "*spacemacs" name)))))
+    (cl-some #'identity
+             (nconc (mapcar (lambda (regexp) (string-match-p regexp name)) perfect-margin-ignore-regexps)
+                    (mapcar (lambda (func) (funcall func win)) perfect-margin-ignore-filters)))))
 
 ;;----------------------------------------------------------------------------
 ;; Minimap
 ;;----------------------------------------------------------------------------
 (defun perfect-margin-minimap-margin-window (win)
-  "Setup window margins with minimap at different stage.  WIN will be any visible window, including the minimap window."
+  "Setup window margins with minimap at different stage.
+WIN will be any visible window, including the minimap window."
   ;; Hint: do not reply on (window-width (minimap-get-window))
   (let ((init-window-margins (perfect-margin--init-window-margins))
         (win-edges (window-edges win)))
     (cond
-     ((not (perfect-margin--auto-margin-basic-p win))
+     ((perfect-margin--auto-margin-ignore-p win)
       (set-window-margins win (if (perfect-margin-with-linum-p) 3 0) 0))
      ((not (minimap-get-window))
       ;; minimap-window is not available
@@ -226,7 +235,7 @@
   (dolist (win (window-list))
     (cond
      ((perfect-margin-with-minimap-p) (perfect-margin-minimap-margin-window win))
-     ((and (perfect-margin--auto-margin-basic-p win)
+     ((and (not (perfect-margin--auto-margin-ignore-p win))
            (<= (frame-width) (perfect-margin--width-with-margins win)))
       (let ((init-window-margins (perfect-margin--init-window-margins)))
         (set-window-margins win (car init-window-margins) (cdr init-window-margins))))
@@ -274,7 +283,7 @@
 (define-minor-mode perfect-margin-mode
   ""
   :init-value nil
-  :lighter "©"
+  :lighter perfect-margin-lighter
   :global t
   (if perfect-margin-mode
       ;; add hook and activate
