@@ -42,6 +42,27 @@ Change `perfect-margin-visible-width` and `Apply and Save`. That's it.
 (setq perfect-margin-visible-width 128)
 ```
 
+## Customize what window to ignore setting margins
+
+perfect-margin by default ignore setting margins for minibuffer window and any window whos name starts with "*".
+Many of them are for special purpose.
+
+You can change this behavior by setting `perfect-margin-ignore-regexps` and `perfect-margin-ignore-filters`.
+
+```lisp
+(defcustom perfect-margin-ignore-regexps
+  '("^minibuf" "^[*]")
+  "List of strings to determine if window is ignored.
+Each string is used as regular expression to match the window buffer name."
+  :group 'perfect-margin)
+
+(defcustom perfect-margin-ignore-filters
+  '(window-minibuffer-p)
+  "List of functions to determine if window is ignored.
+Each function is called with window as its sole arguemnt, returning a non-nil value indicate to ignore the window."
+  :group 'perfect-margin)
+```
+
 # Additional binding on margin area
 
 You can place this in your init.el to make mouse wheel scroll on margin area just like it scroll on the visible window.
@@ -52,8 +73,7 @@ You can place this in your init.el to make mouse wheel scroll on margin area jus
   (global-set-key (kbd (concat margin "<mouse-3>")) 'ignore)
   (dolist (multiple '("" "double-" "triple-"))
       (global-set-key (kbd (concat margin "<" multiple "wheel-up>")) 'mwheel-scroll)
-      (global-set-key (kbd (concat margin "<" multiple "wheel-down>")) 'mwheel-scroll)
-      ))
+      (global-set-key (kbd (concat margin "<" multiple "wheel-down>")) 'mwheel-scroll)))
 ```
 
 # for *use-package* user
@@ -72,9 +92,7 @@ You can place this in your init.el to make mouse wheel scroll on margin area jus
   (global-set-key (kbd (concat margin "<mouse-3>")) 'ignore)
   (dolist (multiple '("" "double-" "triple-"))
       (global-set-key (kbd (concat margin "<" multiple "wheel-up>")) 'mwheel-scroll)
-      (global-set-key (kbd (concat margin "<" multiple "wheel-down>")) 'mwheel-scroll)
-      ))
-  )
+      (global-set-key (kbd (concat margin "<" multiple "wheel-down>")) 'mwheel-scroll))))
 ```
 
 # Emacs Rocks and happy hacking!

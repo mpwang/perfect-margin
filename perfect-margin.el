@@ -91,7 +91,7 @@ Each string is used as regular expression to match the window buffer name."
 (defcustom perfect-margin-ignore-filters
   '(window-minibuffer-p)
   "List of functions to determine if window is ignored.
-Each function is called with window as its sole arguemnt."
+Each function is called with window as its sole arguemnt, returning a non-nil value indicate to ignore the window."
   :group 'perfect-margin)
 
 ;;----------------------------------------------------------------------------
