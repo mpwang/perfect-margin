@@ -6,7 +6,7 @@
 ;; Version: 0.1
 ;; URL: https://github.com/mpwang/perfect-margin
 ;; Keywords: convenience, frames
-;; Package-Requires: ((emacs "24.0"))
+;; Package-Requires: ((emacs "24.0") (cl-lib "0.5"))
 
 ;; This file is *NOT* part of GNU Emacs.
 
@@ -63,6 +63,7 @@
 ;;; Code:
 
 (require 'linum)
+(require 'cl-lib)
 
 (defvar minimap-width-fraction)
 (defvar minimap-buffer-name)
@@ -80,19 +81,22 @@
 
 (defcustom perfect-margin-visible-width 128
   "The visible width of main window to be kept at center."
-  :group 'perfect-margin)
+  :group 'perfect-margin
+  :type 'number)
 
 (defcustom perfect-margin-ignore-regexps
   '("^minibuf" "^[*]")
   "List of strings to determine if window is ignored.
 Each string is used as regular expression to match the window buffer name."
-  :group 'perfect-margin)
+  :group 'perfect-margin
+  :type '(repeat regexp))
 
 (defcustom perfect-margin-ignore-filters
   '(window-minibuffer-p)
   "List of functions to determine if window is ignored.
 Each function is called with window as its sole arguemnt, returning a non-nil value indicate to ignore the window."
-  :group 'perfect-margin)
+  :group 'perfect-margin
+  :type '(list function))
 
 ;;----------------------------------------------------------------------------
 ;; env predictors
@@ -250,13 +254,12 @@ WIN will be any visible window, including the minimap window."
 ;;----------------------------------------------------------------------------
 ;; Advice
 ;;----------------------------------------------------------------------------
-(defvar perfect-margin--linum-format
-  (lambda (line)
-    (propertize
-     (format (concat "%" (number-to-string (max 3 (length (number-to-string line)))) "d") line)
-     'face
-     'linum))
-  "`linum-format' to set left margin to be 3 as minimum.")
+(defun perfect-margin--linum-format (line)
+  "Function for `linum-format' to set left margin for LINE to be 3 as maximum."
+  (propertize
+   (format (concat "%" (number-to-string (max 3 (length (number-to-string line)))) "d") line)
+   'face
+   'linum))
 
 (defvar perfect-margin--linum-update-win-left-margin nil
   "Variable to store original window marings before `linum-update-window'.")
@@ -281,7 +284,7 @@ WIN will be any visible window, including the minimap window."
 ;;----------------------------------------------------------------------------
 ;;;###autoload
 (define-minor-mode perfect-margin-mode
-  ""
+  "Auto center windows."
   :init-value nil
   :lighter perfect-margin-lighter
   :global t
