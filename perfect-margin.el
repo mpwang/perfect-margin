@@ -94,6 +94,14 @@ Each string is used as regular expression to match the window buffer name."
 Each function is called with window as its sole arguemnt, returning a non-nil value indicate to ignore the window."
   :group 'perfect-margin)
 
+(defcustom perfect-margin-ignore-modes
+  '(exwm-mode
+    doc-view-mode
+    nov-mode)
+  "List of symbols of ignored major modes."
+  :type '(repeat symbol)
+  :group 'perfect-margin)
+
 ;;----------------------------------------------------------------------------
 ;; env predictors
 ;;----------------------------------------------------------------------------
@@ -144,10 +152,13 @@ Each function is called with window as its sole arguemnt, returning a non-nil va
 
 (defun perfect-margin--auto-margin-ignore-p (win)
   "Conditions for filtering window (WIN) to setup margin."
-  (let ((name (buffer-name (window-buffer win))))
-    (cl-some #'identity
-             (nconc (mapcar (lambda (regexp) (string-match-p regexp name)) perfect-margin-ignore-regexps)
-                    (mapcar (lambda (func) (funcall func win)) perfect-margin-ignore-filters)))))
+  (let* ((buffer (window-buffer win))
+         (name (buffer-name buffer)))
+    (or (with-current-buffer buffer
+          (apply #'derived-mode-p perfect-margin-ignore-modes))
+        (cl-some #'identity
+                 (nconc (mapcar (lambda (regexp) (string-match-p regexp name)) perfect-margin-ignore-regexps)
+                        (mapcar (lambda (func) (funcall func win)) perfect-margin-ignore-filters))))))
 
 ;;----------------------------------------------------------------------------
 ;; Minimap
