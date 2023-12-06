@@ -65,15 +65,18 @@ Default value for these two variables are listed below.
 
 ```lisp
 (defcustom perfect-margin-ignore-regexps
-  '("^minibuf" "^[*]")
+  '("^minibuf" "^[[:space:]]*\\*")
   "List of strings to determine if window is ignored.
+
 Each string is used as regular expression to match the window buffer name."
   :group 'perfect-margin)
 
 (defcustom perfect-margin-ignore-filters
   '(window-minibuffer-p)
   "List of functions to determine if window is ignored.
-Each function is called with window as its sole arguemnt, returning a non-nil value indicate to ignore the window."
+
+Each function is called with window as its sole arguemnt,
+returning a non-nil value indicate to ignore the window."
   :group 'perfect-margin)
 ```
 

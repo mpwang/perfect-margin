@@ -94,8 +94,9 @@
   :type 'boolean)
 
 (defcustom perfect-margin-ignore-regexps
-  '("^minibuf" "^[*]")
+  '("^minibuf" "^[[:space:]]*\\*")
   "List of strings to determine if window is ignored.
+
 Each string is used as regular expression to match the window buffer name."
   :group 'perfect-margin
   :type '(repeat regexp))
