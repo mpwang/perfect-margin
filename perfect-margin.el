@@ -1,4 +1,4 @@
-;;; perfect-margin.el --- auto center windows, work with minimap and/or linum-mode
+;;; perfect-margin.el --- Auto center windows, works with line numbers
 ;; Copyright (C) 2014 Randall Wang
 
 ;; Author: Randall Wang <randall.wjz@gmail.com>
@@ -6,7 +6,7 @@
 ;; Version: 0.1
 ;; URL: https://github.com/mpwang/perfect-margin
 ;; Keywords: convenience, frames
-;; Package-Requires: ((emacs "24.0") (cl-lib "0.5"))
+;; Package-Requires: ((emacs "24.3"))
 
 ;; This file is *NOT* part of GNU Emacs.
 
@@ -37,7 +37,8 @@
 ;;
 ;; (perfect-margin-mode 1)
 ;;
-;; Note: when using together with minimap or linum, make sure you place config for perfect-margin *AFTER* minimap and linum.
+;; Note: when using together with minimap or linum/display-line-numbers,
+;; make sure you place config for perfect-margin *AFTER* minimap and linum.
 ;;
 ;; # Customization
 ;;
@@ -61,9 +62,12 @@
 ;;     (global-set-key (kbd (concat margin "<" multiple "wheel-down>")) 'mwheel-scroll)))
 
 ;;; Code:
-
-(require 'linum)
 (require 'cl-lib)
+(when (version< emacs-version "26.1")
+  (require 'linum))
+
+(defvar linum-format)
+(declare-function linum-update-current "linum")
 
 (defvar minimap-width-fraction)
 (defvar minimap-buffer-name)
@@ -99,7 +103,9 @@ Each string is used as regular expression to match the window buffer name."
 (defcustom perfect-margin-ignore-filters
   '(window-minibuffer-p)
   "List of functions to determine if window is ignored.
-Each function is called with window as its sole arguemnt, returning a non-nil value indicate to ignore the window."
+
+Each function is called with window as its sole arguemnt,
+returning a non-nil value indicate to ignore the window."
   :group 'perfect-margin
   :type '(list function))
 
@@ -115,16 +121,26 @@ Each function is called with window as its sole arguemnt, returning a non-nil va
 ;; env predictors
 ;;----------------------------------------------------------------------------
 (defun perfect-margin-with-linum-p ()
-  "Whether linum is found and turn on."
+  "Whether `linum-mode' is found and turn on."
   (bound-and-true-p linum-mode))
 
+(defun perfect-margin-with-display-line-numbers-p ()
+  "Whether `display-line-numbers-mode' is found and turn on."
+  (bound-and-true-p display-line-numbers-mode))
+
 (defun perfect-margin-with-minimap-p ()
-  "Whether minimap is found."
+  "Whether `minimap-mode' is found and turn on."
   (bound-and-true-p minimap-mode))
 
 ;;----------------------------------------------------------------------------
 ;; Private functions
 ;;----------------------------------------------------------------------------
+(defun perfect-margin--show-line-numbers-p ()
+  "Whether line numbers are displayed."
+  (or (perfect-margin-with-linum-p)
+      (perfect-margin-with-display-line-numbers-p)))
+
+
 (defun perfect-margin--width-with-margins (win)
   "Calculate size of window(WIN) with it's margins."
   (let ((margins (window-margins win)))
@@ -180,7 +196,7 @@ WIN will be any visible window, including the minimap window."
         (win-edges (window-edges win)))
     (cond
      ((perfect-margin--auto-margin-ignore-p win)
-      (set-window-margins win (if (perfect-margin-with-linum-p) 3 0) 0))
+      (set-window-margins win (if (perfect-margin--show-line-numbers-p) 3 0) 0))
      ((not (minimap-get-window))
       ;; minimap-window is not available
       (cond
@@ -200,12 +216,12 @@ WIN will be any visible window, including the minimap window."
              (= (or (cdr (window-margins win)) 0)  (cdr init-window-margins)))
         ;; the newly split-off window on the right hand side, which carries init-window-margins
         (set-window-margins win
-                            (max (if (perfect-margin-with-linum-p) 3 0)
+                            (max (if (perfect-margin--show-line-numbers-p) 3 0)
                                  (- (car init-window-margins)
                                     (round (* perfect-margin-visible-width minimap-width-fraction))))
                             (cdr init-window-margins)))
        (t
-        (set-window-margins win (if (perfect-margin-with-linum-p) 3 0) 0))))
+        (set-window-margins win (if (perfect-margin--show-line-numbers-p) 3 0) 0))))
      ;; catch and don't set minimap window
      ((string-match minimap-buffer-name (buffer-name (window-buffer win))))
      ((not (window-live-p (minimap-get-window)))
@@ -219,7 +235,7 @@ WIN will be any visible window, including the minimap window."
              (= (or (car (window-margins win)) 0) (car init-window-margins))
              (= (or (cdr (window-margins win)) 0) (cdr init-window-margins)))
         (set-window-margins win
-                            (max (if (perfect-margin-with-linum-p) 3 0)
+                            (max (if (perfect-margin--show-line-numbers-p) 3 0)
                                  (- (car init-window-margins)
                                     (round (* perfect-margin-visible-width minimap-width-fraction))))
                             (cdr init-window-margins)))
@@ -228,30 +244,30 @@ WIN will be any visible window, including the minimap window."
         ;; left edge of win extends to frame's left-most edge, it's width increased by width of minimap window.
         (set-window-margins win (car init-window-margins) (cdr init-window-margins)))
        (t
-        (set-window-margins win (if (perfect-margin-with-linum-p) 3 0) 0))))
+        (set-window-margins win (if (perfect-margin--show-line-numbers-p) 3 0) 0))))
      ;; minimap window is created, but it has the same name with it's target window
      ;; catch and don't set minimap window
      ((perfect-margin--minimap-window-p win))
      ((perfect-margin--minimap-left-adjacent-covered-p win)
       (cond
        ((not (>= (nth 2 win-edges) (frame-width)))
-        (set-window-margins win (if (perfect-margin-with-linum-p) 3 0) 0))
+        (set-window-margins win (if (perfect-margin--show-line-numbers-p) 3 0) 0))
        (t
         (set-window-margins win
-                            (max (if (perfect-margin-with-linum-p) 3 0)
+                            (max (if (perfect-margin--show-line-numbers-p) 3 0)
                                  (- (car init-window-margins)
                                     (round (* perfect-margin-visible-width minimap-width-fraction))))
                             (cdr init-window-margins)))))
      ((= (frame-width) (perfect-margin--width-with-margins win))
       (set-window-margins win (car init-window-margins) (cdr init-window-margins)))
      (t
-      (set-window-margins win (if (perfect-margin-with-linum-p) 3 0) 0)))))
+      (set-window-margins win (if (perfect-margin--show-line-numbers-p) 3 0) 0)))))
 
 ;;----------------------------------------------------------------------------
 ;; Main
 ;;----------------------------------------------------------------------------
 (defun perfect-margin-margin-windows ()
-  "Main logic to setup window's margin, keep the visible main window always at center."
+  "Setup margins, keep the visible main window always at center."
   (dolist (win (window-list))
     (cond
      ((perfect-margin-with-minimap-p) (perfect-margin-minimap-margin-window win))
@@ -259,13 +275,14 @@ WIN will be any visible window, including the minimap window."
            (<= (frame-width) (perfect-margin--width-with-margins win)))
       (let ((init-window-margins (perfect-margin--init-window-margins)))
         (set-window-margins win (car init-window-margins) (cdr init-window-margins))))
-     (t (set-window-margins win (if (perfect-margin-with-linum-p) 3 0) 0)))
+     (t (set-window-margins win (if (perfect-margin--show-line-numbers-p) 3 0) 0)))
     (when perfect-margin-hide-fringes
       (set-window-fringes win 0 0))))
 
 (defun perfect-margin-margin-frame (&optional _)
   "Hook to resize window when frame size change."
-  (when (frame-size-changed-p)
+  (when (and (fboundp 'frame-size-changed-p)
+             (frame-size-changed-p))
     (perfect-margin-margin-windows)))
 
 ;;----------------------------------------------------------------------------
@@ -297,6 +314,7 @@ WIN will be any visible window, including the minimap window."
     (set-window-fringes (minimap-get-window) 0 0)))
 
 (defadvice split-window (before perfect-margin--disable-margins nil)
+  "Adjust all existing windows before 'split-window' is called."
   (dolist (win (window-list))
     (set-window-margins win 0 0)
     (when perfect-margin-hide-fringes
