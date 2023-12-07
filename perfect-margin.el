@@ -200,8 +200,8 @@ WIN will be any visible window, including the minimap window."
   (let ((init-window-margins (perfect-margin--init-window-margins))
         (win-edges (window-edges win)))
     (cond
-     ((perfect-margin--auto-margin-ignore-p win)
-      (set-window-margins win (perfect-margin--default-left-margin) 0))
+     ;; don't set margin for ingored window
+     ((perfect-margin--auto-margin-ignore-p win))
      ((not (minimap-get-window))
       ;; minimap-window is not available
       (cond
@@ -266,7 +266,9 @@ WIN will be any visible window, including the minimap window."
      ((= (frame-width) (perfect-margin--width-with-margins win))
       (set-window-margins win (car init-window-margins) (cdr init-window-margins)))
      (t
-      (set-window-margins win (perfect-margin--default-left-margin) 0)))))
+      (set-window-margins win
+                          (car init-window-margins)
+                          (- (cdr init-window-margins) (window-width (minimap-get-window))))))))
 
 ;;----------------------------------------------------------------------------
 ;; Main

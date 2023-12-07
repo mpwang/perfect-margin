@@ -32,6 +32,13 @@ To make it permanent add this to your init.el after require.
 ## Important Note
 when using together with minimap or linum, make sure you place config for perfect-margin `AFTER` minimap and linum.
 
+for **doom-emacs** users please add this to your `config.el` file when using minimap on the **right** side (which is the default value), otherwise the minimap might overlap with the mode line.
+
+``` lisp
+(after! doom-modeline
+  (setq mode-line-right-align-edge 'right-margin))
+```
+
 # Customization
 
 Via `M-x customize-group` and enter perfect-margin.
