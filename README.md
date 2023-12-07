@@ -51,9 +51,6 @@ Change `perfect-margin-visible-width` and `Apply and Save`. That's it.
 (setq perfect-margin-visible-width 128)
 ```
 
-
-By default both left and right margin are set, but most of the cases setting the left margin only is good enough, this can utilize the display room on the right for large display. Enable this option to only set left margin of windows.
-
 By default both left and right margins are set, but in most cases setting only the left margin is sufficient as it allows for more display room on the right. Enable this option to only set the left margin of windows.
 
 ``` lisp
