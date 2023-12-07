@@ -93,6 +93,11 @@
   :group 'perfect-margin
   :type 'boolean)
 
+(defcustom perfect-margin-only-set-left-margin nil
+  "Set the left margin only, leave right margin untouched."
+  :group 'perfect-margin
+  :type 'boolean)
+
 (defcustom perfect-margin-ignore-regexps
   '("^minibuf" "^[[:space:]]*\\*")
   "List of strings to determine if window is ignored.
@@ -198,7 +203,8 @@ returning a non-nil value indicate to ignore the window."
 WIN will be any visible window, including the minimap window."
   ;; Hint: do not reply on (window-width (minimap-get-window))
   (let ((init-window-margins (perfect-margin--init-window-margins))
-        (win-edges (window-edges win)))
+        (win-edges (window-edges win))
+        (win-right-margin (cdr (window-margins win))))
     (cond
      ;; don't set margin for ingored window
      ((perfect-margin--auto-margin-ignore-p win))
@@ -262,13 +268,18 @@ WIN will be any visible window, including the minimap window."
                             (max (perfect-margin--default-left-margin)
                                  (- (car init-window-margins)
                                     (round (* perfect-margin-visible-width minimap-width-fraction))))
-                            (cdr init-window-margins)))))
+                            (if perfect-margin-only-set-left-margin
+                                win-right-margin
+                              (cdr init-window-margins))))))
      ((= (frame-width) (perfect-margin--width-with-margins win))
       (set-window-margins win (car init-window-margins) (cdr init-window-margins)))
+     ;; minimap right adjacent
      (t
       (set-window-margins win
                           (car init-window-margins)
-                          (- (cdr init-window-margins) (window-width (minimap-get-window))))))))
+                          (if perfect-margin-only-set-left-margin
+                              win-right-margin
+                            (- (cdr init-window-margins) (window-width (minimap-get-window)))))))))
 
 ;;----------------------------------------------------------------------------
 ;; Main
@@ -281,7 +292,11 @@ WIN will be any visible window, including the minimap window."
      ((and (not (perfect-margin--auto-margin-ignore-p win))
            (<= (frame-width) (perfect-margin--width-with-margins win)))
       (let ((init-window-margins (perfect-margin--init-window-margins)))
-        (set-window-margins win (car init-window-margins) (cdr init-window-margins))))
+        (set-window-margins win
+                            (car init-window-margins)
+                            (if perfect-margin-only-set-left-margin
+                                (cdr (window-margins win))
+                              (cdr init-window-margins)))))
      (t (set-window-margins win (perfect-margin--default-left-margin) 0)))
     (when perfect-margin-hide-fringes
       (set-window-fringes win 0 0))))
