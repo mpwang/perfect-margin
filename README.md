@@ -3,7 +3,12 @@ perfect-margin
 
 [![MELPA](https://melpa.org/packages/perfect-margin-badge.svg)](https://melpa.org/#/perfect-margin)
 
-Perfect-margin is a global minor mode to auto center windows, work with minimap, linum-mode, and display-line-numbers.
+Perfect-margin is a global minor mode to auto center windows, work with following mode:
+
+- linum-mode
+- display-line-numbers
+- minimap
+- treemacs
 
 A picture is more than one thousand words, here is how it looks like.
 

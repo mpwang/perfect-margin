@@ -73,6 +73,8 @@
 (defvar minimap-buffer-name)
 (declare-function minimap-get-window "minimap")
 
+(declare-function treemacs-get-local-window "treemacs-scope")
+
 (defgroup perfect-margin nil
   "Auto center windows, work with minimap and/or linum-mode."
   :group 'emacs)
@@ -138,6 +140,13 @@ returning a non-nil value indicate to ignore the window."
   "Whether `minimap-mode' is found and turn on."
   (bound-and-true-p minimap-mode))
 
+(defun perfect-margin-with-treemacs-visible-p ()
+  "Whether `treemacs-mode' is found and treemacs window is visible."
+  (and
+   (fboundp 'treemacs-mode)
+   (fboundp 'treemacs-get-local-window)
+   (treemacs-get-local-window)))
+
 ;;----------------------------------------------------------------------------
 ;; Private functions
 ;;----------------------------------------------------------------------------
@@ -178,6 +187,15 @@ returning a non-nil value indicate to ignore the window."
       (and (= (nth 2 minimap-edges) (nth 0 current-edges))
            (<= (nth 1 minimap-edges) (nth 1 current-edges))
            (>= (nth 3 minimap-edges) (nth 3 current-edges))))))
+
+(defun perfect-margin--treemacs-left-adjacent-covered-p (win)
+  "Judge if the window(WIN) is left adjacent to treemacs window."
+  (when (perfect-margin-with-treemacs-visible-p)
+    (let ((treemacs-edges (window-edges (treemacs-get-local-window)))
+          (current-edges (window-edges win)))
+      (and (= (nth 2 treemacs-edges) (nth 0 current-edges))
+           (<= (nth 1 treemacs-edges) (nth 1 current-edges))
+           (>= (nth 3 treemacs-edges) (nth 3 current-edges))))))
 
 (defun perfect-margin--init-window-margins ()
   "Calculate target window margins as if there is only one window on frame."
@@ -282,6 +300,41 @@ WIN will be any visible window, including the minimap window."
                             (- (cdr init-window-margins) (window-width (minimap-get-window)))))))))
 
 ;;----------------------------------------------------------------------------
+;; Treemacs
+;;----------------------------------------------------------------------------
+(defun perfect-margin-treemacs-margin-window (win)
+  "Setup window margins with treemacs.
+
+WIN will be any visible window, including the treemacs window."
+  (message "%S" win)
+  (let ((init-window-margins (perfect-margin--init-window-margins))
+        (win-edges (window-edges win))
+        (win-right-margin (cdr (window-margins win)))
+        (treemacs-window (treemacs-get-local-window)))
+    (cond
+     ;; don't set margin for ingored window
+     ((perfect-margin--auto-margin-ignore-p win)
+      (message "1"))
+     ;; catch and don't set treemacs window
+     ((eq win (treemacs-get-local-window))
+      (message "2"))
+     ((perfect-margin--treemacs-left-adjacent-covered-p win)
+      (cond
+       ((not (>= (nth 2 win-edges) (frame-width)))
+        (message "3")
+        (set-window-margins win (perfect-margin--default-left-margin) 0))
+       (t
+        (message "4")
+        (set-window-margins win
+                            (max (perfect-margin--default-left-margin)
+                                 (- (car init-window-margins)
+                                    (window-width treemacs-window)
+                                    1))
+                            (if perfect-margin-only-set-left-margin
+                                win-right-margin
+                              (cdr init-window-margins)))))))))
+
+;;----------------------------------------------------------------------------
 ;; Main
 ;;----------------------------------------------------------------------------
 (defun perfect-margin-margin-windows ()
@@ -289,6 +342,7 @@ WIN will be any visible window, including the minimap window."
   (dolist (win (window-list))
     (cond
      ((perfect-margin-with-minimap-p) (perfect-margin-minimap-margin-window win))
+     ((perfect-margin-with-treemacs-visible-p) (perfect-margin-treemacs-margin-window win))
      ((and (not (perfect-margin--auto-margin-ignore-p win))
            (<= (frame-width) (perfect-margin--width-with-margins win)))
       (let ((init-window-margins (perfect-margin--init-window-margins)))
