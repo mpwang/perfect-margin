@@ -313,18 +313,14 @@ WIN will be any visible window, including the treemacs window."
         (treemacs-window (treemacs-get-local-window)))
     (cond
      ;; don't set margin for ingored window
-     ((perfect-margin--auto-margin-ignore-p win)
-      (message "1"))
+     ((perfect-margin--auto-margin-ignore-p win))
      ;; catch and don't set treemacs window
-     ((eq win (treemacs-get-local-window))
-      (message "2"))
+     ((eq win (treemacs-get-local-window)))
      ((perfect-margin--treemacs-left-adjacent-covered-p win)
       (cond
        ((not (>= (nth 2 win-edges) (frame-width)))
-        (message "3")
         (set-window-margins win (perfect-margin--default-left-margin) 0))
        (t
-        (message "4")
         (set-window-margins win
                             (max (perfect-margin--default-left-margin)
                                  (- (car init-window-margins)
