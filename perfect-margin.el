@@ -50,6 +50,10 @@
 ;;
 ;; (setq perfect-margin-visible-width 128)
 ;;
+;; By default both left and right margins are set, enable this option to only set the left margin of windows.
+;;
+;; (setq perfect-margin-only-set-left-margin t)
+;;
 ;; # Additional binding on margin area
 ;;
 ;; You can place this in your init.el to make mouse wheel scroll on margin area just like it scroll on the visible window.
@@ -128,18 +132,22 @@ returning a non-nil value indicate to ignore the window."
 ;;----------------------------------------------------------------------------
 ;; env predictors
 ;;----------------------------------------------------------------------------
+;; linum-mode is a minor mode
 (defun perfect-margin-with-linum-p ()
   "Whether `linum-mode' is found and turn on."
   (bound-and-true-p linum-mode))
 
+;; display-line-numbers-mode is a minor mode
 (defun perfect-margin-with-display-line-numbers-p ()
   "Whether `display-line-numbers-mode' is found and turn on."
   (bound-and-true-p display-line-numbers-mode))
 
+;; minimap-mode is a minor mode
 (defun perfect-margin-with-minimap-p ()
   "Whether `minimap-mode' is found and turn on."
   (bound-and-true-p minimap-mode))
 
+;; treemacs-mode is a function
 (defun perfect-margin-with-treemacs-visible-p ()
   "Whether `treemacs-mode' is found and treemacs window is visible."
   (and
@@ -226,6 +234,7 @@ WIN will be any visible window, including the minimap window."
     (cond
      ;; don't set margin for ingored window
      ((perfect-margin--auto-margin-ignore-p win))
+     ;; for minimap >= 1.4: clause not needed
      ((not (minimap-get-window))
       ;; minimap-window is not available
       (cond
@@ -253,6 +262,7 @@ WIN will be any visible window, including the minimap window."
         (set-window-margins win (perfect-margin--default-left-margin) 0))))
      ;; catch and don't set minimap window
      ((string-match minimap-buffer-name (buffer-name (window-buffer win))))
+     ;; for minimap >= 1.4: clause not needed
      ((not (window-live-p (minimap-get-window)))
       ;; minimap-window is not live yet
       (cond
@@ -274,6 +284,7 @@ WIN will be any visible window, including the minimap window."
         (set-window-margins win (car init-window-margins) (cdr init-window-margins)))
        (t
         (set-window-margins win (perfect-margin--default-left-margin) 0))))
+     ;; for minimap >= 1.4: clause not needed
      ;; minimap window is created, but it has the same name with it's target window
      ;; catch and don't set minimap window
      ((perfect-margin--minimap-window-p win))
@@ -306,7 +317,6 @@ WIN will be any visible window, including the minimap window."
   "Setup window margins with treemacs.
 
 WIN will be any visible window, including the treemacs window."
-  (message "%S" win)
   (let ((init-window-margins (perfect-margin--init-window-margins))
         (win-edges (window-edges win))
         (win-right-margin (cdr (window-margins win)))
