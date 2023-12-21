@@ -41,7 +41,7 @@ for **doom-emacs** users please add this to your `config.el` file when using min
 
 ``` lisp
 (after! doom-modeline
-  (setq mode-line-right-align-edge 'right-margin))
+  (setq mode-line-right-align-edge 'right-fringe))
 ```
 
 # Customization
