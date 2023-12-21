@@ -84,6 +84,9 @@
 
 (declare-function treemacs-get-local-window "treemacs-scope")
 
+(defvar org-side-tree-display-side)
+(declare-function org-side-tree-has-tree-p "org-side-tree")
+
 ;;----------------------------------------------------------------------------
 ;; group definitions
 ;;----------------------------------------------------------------------------
@@ -168,6 +171,13 @@ returning a non-nil value indicate to ignore the window."
    (fboundp 'treemacs-get-local-window)
    (treemacs-get-local-window)))
 
+;; org-side-tree-mode is a major mode
+(defun perfect-margin-with-org-side-tree-p ()
+  "Whether `org-side-tree' is found."
+  (and
+   (fboundp 'org-side-tree)
+   (fboundp 'org-side-tree-has-tree-p)))
+
 ;;----------------------------------------------------------------------------
 ;; Private functions
 ;;----------------------------------------------------------------------------
@@ -245,7 +255,10 @@ If there are no cdr elements found, return nil for the max-second."
              (or (string-match minimap-buffer-name (buffer-name (window-buffer win)))
                  (perfect-margin--minimap-window-p win)))
         (and (perfect-margin-with-treemacs-visible-p)
-             (eq win (treemacs-get-local-window))))))
+             (eq win (treemacs-get-local-window)))
+        (and (perfect-margin-with-org-side-tree-p)
+             (with-current-buffer (window-buffer win)
+               (eq major-mode 'org-side-tree-mode))))))
 
 ;;----------------------------------------------------------------------------
 ;; Minimap
@@ -271,7 +284,7 @@ If there are no cdr elements found, return nil for the max-second."
 (defun perfect-margin-minimap-margin-window (win)
   "Setup window margins with minimap at different stage.
 
-WIN will be any visible window, including the minimap window."
+WIN will be any visible window, excluding the ignored windows."
   ;; Hint: do not reply on (window-width (minimap-get-window))
   (when (perfect-margin-with-minimap-p)
     (let ((init-window-margins (perfect-margin--init-window-margins))
@@ -298,13 +311,12 @@ WIN will be any visible window, including the minimap window."
 ;;----------------------------------------------------------------------------
 (defun perfect-margin--treemacs-left-adjacent-covered-p (win)
   "Judge if the window(WIN) is left adjacent to treemacs window."
-  (when (perfect-margin-with-treemacs-visible-p)
-    (perfect-margin--left-adjacent-covered-p (treemacs-get-local-window) win)))
+  (perfect-margin--left-adjacent-covered-p (treemacs-get-local-window) win))
 
 (defun perfect-margin-treemacs-margin-window (win)
   "Setup treemacs window margins.
 
-WIN will be any visible window, including the treemacs window."
+WIN will be any visible window, excluding the ignored windows."
   (when (perfect-margin-with-treemacs-visible-p)
     (let ((init-window-margins (perfect-margin--init-window-margins))
           (win-edges (window-edges win))
@@ -316,11 +328,41 @@ WIN will be any visible window, including the treemacs window."
               (perfect-margin--get-right-margin win)))))))
 
 ;;----------------------------------------------------------------------------
+;; Org-side-tree
+;;----------------------------------------------------------------------------
+(defun perfect-margin-org-side-tree-margin-window (win)
+  "Setup org-side-tree window margins.
+
+WIN will be any visible window, excluding the ignored windows."
+  (when (perfect-margin-with-org-side-tree-p)
+    (let* ((init-window-margins (perfect-margin--init-window-margins))
+           (tree-buffer (org-side-tree-has-tree-p (window-buffer win)))
+           (tree-window (if tree-buffer
+                            (get-buffer-window tree-buffer)
+                          (get-buffer-window "*Org-Side-Tree*"))))
+      (when (and tree-window
+                 (window-live-p tree-window))
+        (cond
+         ((and (eq org-side-tree-display-side 'left)
+               (perfect-margin--left-adjacent-covered-p tree-window win))
+          (message "1")
+          (cons (max (perfect-margin--default-left-margin)
+                     (- (car init-window-margins) (window-width tree-window)))
+                (perfect-margin--get-right-margin win)))
+         ((and (eq org-side-tree-display-side 'right)
+               (perfect-margin--left-adjacent-covered-p win tree-window))
+          (cons (car init-window-margins)
+                (perfect-margin--get-right-margin
+                 win
+                 (- (cdr init-window-margins) (window-width tree-window))))))))))
+
+;;----------------------------------------------------------------------------
 ;; Main
 ;;----------------------------------------------------------------------------
 (defvar perfect-margin-margin-window-function-list
   '(perfect-margin-minimap-margin-window
     perfect-margin-treemacs-margin-window
+    perfect-margin-org-side-tree-margin-window
     (lambda (win) (perfect-margin--init-window-margins))))
 
 (defun perfect-margin-margin-windows ()

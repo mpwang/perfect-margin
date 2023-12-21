@@ -7,8 +7,12 @@ Perfect-margin is a global minor mode to auto center windows, work with followin
 
 - linum-mode
 - display-line-numbers
-- minimap
-- treemacs
+- [minimap](https://elpa.gnu.org/packages/minimap.html)
+- [treemacs](https://github.com/Alexander-Miller/treemacs)
+- [org-side-tree](https://github.com/localauthor/org-side-tree)
+
+support using these modes at the same time, i.e using **treemacs** on the left side and **minimap** on the right side.
+
 
 A picture is more than one thousand words, here is how it looks like.
 
