@@ -78,8 +78,10 @@
 (defvar linum-format)
 (declare-function linum-update-current "linum")
 
-(defvar minimap-width-fraction)
 (defvar minimap-buffer-name)
+(defvar minimap-minimum-width)
+(defvar minimap-width-fraction)
+(defvar minimap-window-location)
 (declare-function minimap-get-window "minimap")
 
 (declare-function treemacs-get-local-window "treemacs-scope")
@@ -285,7 +287,6 @@ If there are no cdr elements found, return nil for the max-second."
   "Setup window margins with minimap at different stage.
 
 WIN will be any visible window, excluding the ignored windows."
-  ;; Hint: do not reply on (window-width (minimap-get-window))
   (when (perfect-margin-with-minimap-p)
     (let ((init-window-margins (perfect-margin--init-window-margins))
           (win-edges (window-edges win)))
@@ -296,7 +297,7 @@ WIN will be any visible window, excluding the ignored windows."
             (cons (perfect-margin--default-left-margin) 0)
           (cons (max (perfect-margin--default-left-margin)
                      (- (car init-window-margins)
-                        (round (* perfect-margin-visible-width minimap-width-fraction))))
+                        (window-total-width (minimap-get-window))))
                 (perfect-margin--get-right-margin win))))
        ;; minimap right adjacent
        (t
@@ -304,7 +305,7 @@ WIN will be any visible window, excluding the ignored windows."
               (perfect-margin--get-right-margin
                win
                (- (cdr init-window-margins)
-                  (round (* perfect-margin-visible-width minimap-width-fraction))))))))))
+                  (window-total-width (minimap-get-window))))))))))
 
 ;;----------------------------------------------------------------------------
 ;; Treemacs
@@ -324,7 +325,8 @@ WIN will be any visible window, excluding the ignored windows."
       (cond
        ((perfect-margin--treemacs-left-adjacent-covered-p win)
         (cons (max (perfect-margin--default-left-margin)
-                   (- (car init-window-margins) (window-width treemacs-window) 2))
+                   (- (car init-window-margins)
+                      (window-total-width treemacs-window)))
               (perfect-margin--get-right-margin win)))))))
 
 ;;----------------------------------------------------------------------------
@@ -345,20 +347,43 @@ WIN will be any visible window, excluding the ignored windows."
         (cond
          ((and (eq org-side-tree-display-side 'left)
                (perfect-margin--left-adjacent-covered-p tree-window win))
-          (message "1")
           (cons (max (perfect-margin--default-left-margin)
-                     (- (car init-window-margins) (window-width tree-window)))
+                     (- (car init-window-margins) (window-total-width tree-window)))
                 (perfect-margin--get-right-margin win)))
          ((and (eq org-side-tree-display-side 'right)
                (perfect-margin--left-adjacent-covered-p win tree-window))
           (cons (car init-window-margins)
                 (perfect-margin--get-right-margin
                  win
-                 (- (cdr init-window-margins) (window-width tree-window))))))))))
+                 (- (cdr init-window-margins) (window-total-width tree-window))))))))))
 
 ;;----------------------------------------------------------------------------
 ;; Main
 ;;----------------------------------------------------------------------------
+(defun perfect-margin--main-window ()
+  "Find the main window based on the largest width and height."
+  (car
+   (sort
+    (seq-filter (lambda (win) (not (perfect-margin--auto-margin-ignore-p win)))(window-list))
+    (lambda (w1 w2)
+      (> (* (window-total-width w1) (window-body-height w1))
+         (* (window-total-width w2) (window-body-height w2)))))))
+
+(defun perfect-margin--horizontally-split-main-window-p (main-win)
+  "Check if the MAIN-WIN has been horizontally split.
+
+checks if there is any other window that shares the same vertical start position
+as the main window. If such a window exists, it indicates that the main window
+has been horizontally split."
+  (let ((main-start (window-top-line main-win)))
+    (catch 'split
+      (dolist (win (window-list))
+        (when (and (not (perfect-margin--auto-margin-ignore-p win))
+                   (not (eq win main-win))
+                   (eq main-start (window-top-line win)))
+          (throw 'split t)))
+      nil)))
+
 (defvar perfect-margin-margin-window-function-list
   '(perfect-margin-minimap-margin-window
     perfect-margin-treemacs-margin-window
@@ -367,24 +392,38 @@ WIN will be any visible window, excluding the ignored windows."
 
 (defun perfect-margin-margin-windows ()
   "Setup margins, keep the visible main window always at center."
-  (dolist (win (window-list))
-    (unless (perfect-margin--auto-margin-ignore-p win)
-      (let ((margin-candidates (thread-last
-                                 perfect-margin-margin-window-function-list
-                                 (mapcar (lambda (f) (funcall f win)))
-                                 (remove nil)
-                                 (remove t))))
-        (when margin-candidates
-          (let ((min-margins (perfect-margin--get-min-margins margin-candidates))
-                (win-fringes (window-fringes win)))
+  (let ((main-win (perfect-margin--main-window)))
+    (if (perfect-margin--horizontally-split-main-window-p main-win)
+        ;; reset all windows if main window is horizontaly split
+        (dolist (win (window-list))
+          (unless (perfect-margin--auto-margin-ignore-p win)
             (when perfect-margin-enable-debug-log
-              (message "%S candidaets: %S min-margins: %S" win margin-candidates min-margins))
-            (set-window-margins win (car min-margins) (cdr min-margins))
-            ;; draw the fringes inside the margin space
-            ;; for package like git-gutter-fringe to display indicator near the line number
-            (set-window-fringes win (nth 0 win-fringes) (nth 1 win-fringes) nil))))
-      (when perfect-margin-hide-fringes
-        (set-window-fringes win 0 0)))))
+              (message "%S margins reset" win))
+            (set-window-margins win 0 0)))
+      ;; set the margins for windows
+      (dolist (win (window-list))
+        (unless (perfect-margin--auto-margin-ignore-p win)
+          (if (not (eq (window-total-width win) (window-total-width main-win)))
+              (progn
+                (when perfect-margin-enable-debug-log
+                  (message "%S margins reset" win))
+                (set-window-margins win  0 0))
+            (let ((margin-candidates (thread-last
+                                       perfect-margin-margin-window-function-list
+                                       (mapcar (lambda (f) (funcall f win)))
+                                       (remove nil)
+                                       (remove t))))
+              (when margin-candidates
+                (let ((min-margins (perfect-margin--get-min-margins margin-candidates))
+                      (win-fringes (window-fringes win)))
+                  (when perfect-margin-enable-debug-log
+                    (message "%S candidaets: %S min-margins: %S" win margin-candidates min-margins))
+                  (set-window-margins win (car min-margins) (cdr min-margins))
+                  ;; draw the fringes inside the margin space
+                  ;; for package like git-gutter-fringe to display indicator near the line number
+                  (set-window-fringes win (nth 0 win-fringes) (nth 1 win-fringes) nil)))))
+          (when perfect-margin-hide-fringes
+            (set-window-fringes win 0 0)))))))
 
 (defun perfect-margin-margin-frame (&optional _)
   "Hook to resize window when frame size change."
@@ -420,12 +459,35 @@ WIN will be any visible window, excluding the ignored windows."
               minimap-hide-fringes)
     (set-window-fringes (minimap-get-window) 0 0)))
 
-(defadvice split-window (before perfect-margin--disable-margins nil)
-  "Adjust all existing windows before 'split-window' is called."
-  (dolist (win (window-list))
-    (set-window-margins win 0 0)
-    (when perfect-margin-hide-fringes
-      (set-window-fringes win 0 0))))
+;; I'm tired of a width-changing minimap on the right, just use a fixed width
+(defun perfect-margin--minimap-create-window-advice (orig-fun &rest args)
+  "Advice to modify the behavior of `minimap-create-window'.
+Create the minimap-window to be fixed width, ignore the ARGS,
+ORIG-FUN is `split-window-horizontally'."
+  (let* ((original-split-window-horizontally (symbol-function 'split-window-horizontally))
+         (min-width (round (max minimap-minimum-width
+                                (* minimap-width-fraction (frame-width)))))
+         (fixed-width (if (eq minimap-window-location 'left) min-width (* -1  min-width))))
+    (cl-letf (((symbol-function 'split-window-horizontally)
+               (lambda (&optional size)
+                 (funcall original-split-window-horizontally fixed-width))))
+      (when perfect-margin-enable-debug-log
+        (message "minimap fixed width %S" fixed-width))
+      (apply orig-fun args))))
+
+;; make the minimap-window on the right to be consistent when open/close the left side window
+(defun perfect-margin--fix-minimap-width ()
+  "Ensure that the minimap window maintains a fixed total width."
+  (when (perfect-margin-with-minimap-p)
+    (let ((minimap-win (minimap-get-window))
+          (fixed-width (* minimap-width-fraction (frame-width))))
+      (when (window-live-p minimap-win)
+        (with-selected-window minimap-win
+          (let* ((current-total-width (window-total-width))
+                 (delta (round (- fixed-width current-total-width))))
+            (when (not (zerop delta))
+              ;; Resize by delta to match fixed width
+              (window-resize nil delta t))))))))
 
 ;;----------------------------------------------------------------------------
 ;; MINOR mode definition
@@ -444,8 +506,10 @@ WIN will be any visible window, excluding the ignored windows."
           (when (eq linum-format 'dynamic)
             (setq linum-format 'perfect-margin--linum-format)))
         (when (perfect-margin-with-minimap-p)
-          (ad-activate 'minimap-update))
-        (ad-activate 'split-window)
+          (ad-activate 'minimap-update)
+          (advice-add 'minimap-create-window :around #'perfect-margin--minimap-create-window-advice))
+        (when (fboundp 'minimap-mode)
+          (add-hook 'window-configuration-change-hook 'perfect-margin--fix-minimap-width))
         (add-hook 'window-configuration-change-hook 'perfect-margin-margin-windows)
         (add-hook 'window-size-change-functions 'perfect-margin-margin-frame)
         (perfect-margin-margin-windows))
@@ -456,8 +520,10 @@ WIN will be any visible window, excluding the ignored windows."
         (setq linum-format 'dynamic))
       (linum-update-current))
     (when (perfect-margin-with-minimap-p)
-      (ad-deactivate 'minimap-update))
-    (ad-deactivate 'split-window)
+      (ad-deactivate 'minimap-update)
+      (advice-remove 'minimap-create-window #'perfect-margin--minimap-create-window-advice))
+    (when (fboundp 'minimap-mode)
+      (remove-hook 'window-configuration-change-hook 'perfect-margin--fix-minimap-width))
     (remove-hook 'window-configuration-change-hook 'perfect-margin-margin-windows)
     (remove-hook 'window-size-change-functions 'perfect-margin-margin-frame)
     (dolist (window (window-list))

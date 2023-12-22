@@ -3,16 +3,19 @@ perfect-margin
 
 [![MELPA](https://melpa.org/packages/perfect-margin-badge.svg)](https://melpa.org/#/perfect-margin)
 
-Perfect-margin is a global minor mode to auto center windows, work with following mode:
+Perfect-margin is a global minor mode to auto center windows.
+
+Support using these following modes at the same time:
 
 - linum-mode
 - display-line-numbers
-- [minimap](https://elpa.gnu.org/packages/minimap.html)
-- [treemacs](https://github.com/Alexander-Miller/treemacs)
-- [org-side-tree](https://github.com/localauthor/org-side-tree)
+- [minimap](https://elpa.gnu.org/packages/minimap.html) position both `'left` `'right`
+- [treemacs](https://github.com/Alexander-Miller/treemacs) position `'left`
+- [org-side-tree](https://github.com/localauthor/org-side-tree) position both `'left` `'right`
 
-support using these modes at the same time, i.e using **treemacs** on the left side and **minimap** on the right side.
+You can use **treemacs** on the left side and **minimap** on the right side.
 
+minimap window on the right-side has been adviced to be fixed-width.
 
 A picture is more than one thousand words, here is how it looks like.
 
