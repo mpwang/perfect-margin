@@ -148,4 +148,29 @@ You can place this in your init.el to make mouse wheel scroll on margin area jus
       (global-set-key (kbd (concat margin "<" multiple "wheel-down>")) 'mwheel-scroll))))
 ```
 
+# for *doom-emacs* user
+
+`package.el`
+
+``` lisp
+(package! perfect-margin)
+```
+
+`config.el`
+
+``` lisp
+(use-package! perfect-margin
+  :config
+  (after! doom-modeline
+    (setq mode-line-right-align-edge 'right-fringe))
+  (after! minimap
+    ;; if you use (vc-gutter +pretty)
+    ;; and theme is causing "Invalid face attribute :foreground nil"
+    ;; (setq minimap-highlight-line nil)
+    (setq minimap-width-fraction 0.08))
+  ;; (setq perfect-margin-only-set-left-margin t)
+  (perfect-margin-mode t))
+```
+
+
 # Emacs Rocks and happy hacking!
