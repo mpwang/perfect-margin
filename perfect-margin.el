@@ -459,6 +459,13 @@ has been horizontally split."
               minimap-hide-fringes)
     (set-window-fringes (minimap-get-window) 0 0)))
 
+(defadvice split-window (before perfect-margin--disable-margins nil)
+  "Adjust all existing windows before 'split-window' is called."
+  (dolist (win (window-list))
+    (set-window-margins win 0 0)
+    (when perfect-margin-hide-fringes
+      (set-window-fringes win 0 0))))
+
 ;; I'm tired of a width-changing minimap on the right, just use a fixed width
 (defun perfect-margin--minimap-create-window-advice (orig-fun &rest args)
   "Advice to modify the behavior of `minimap-create-window'.
@@ -510,6 +517,7 @@ ORIG-FUN is `split-window-horizontally'."
           (advice-add 'minimap-create-window :around #'perfect-margin--minimap-create-window-advice))
         (when (fboundp 'minimap-mode)
           (add-hook 'window-configuration-change-hook 'perfect-margin--fix-minimap-width))
+        (ad-activate 'split-window)
         (add-hook 'window-configuration-change-hook 'perfect-margin-margin-windows)
         (add-hook 'window-size-change-functions 'perfect-margin-margin-frame)
         (perfect-margin-margin-windows))
@@ -524,6 +532,7 @@ ORIG-FUN is `split-window-horizontally'."
       (advice-remove 'minimap-create-window #'perfect-margin--minimap-create-window-advice))
     (when (fboundp 'minimap-mode)
       (remove-hook 'window-configuration-change-hook 'perfect-margin--fix-minimap-width))
+    (ad-deactivate 'split-window)
     (remove-hook 'window-configuration-change-hook 'perfect-margin-margin-windows)
     (remove-hook 'window-size-change-functions 'perfect-margin-margin-frame)
     (dolist (window (window-list))
