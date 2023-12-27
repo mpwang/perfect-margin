@@ -108,10 +108,11 @@ returning a non-nil value indicate to ignore the window."
 
 ## Customize window fringes
 
-perfect-margin by default set both left and right fringe of all windows to zero, this might cause problem in some corner cases if
-another package which also manipulate fringes is enabled.
+perfect-margin by default does not manipulate window fringes.
 
-You can set `perfect-margin-hide-fringes` to `nil` to tell perfect-margin not to manipulate fringes.
+You can set `perfect-margin-hide-fringes` to `t` to tell perfect-margin to set both left and right fringe of all windows to zero, this
+might be useful in some corner cases where other packages which also manipulate fringes are enabled.
+
 
 # Additional binding on margin area
 
