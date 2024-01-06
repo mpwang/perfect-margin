@@ -67,6 +67,7 @@
 
 ;;; Code:
 (require 'cl-lib)
+(require 'subr-x)
 
 ;; linum-mode is deprecated since 26.1, use display-line-numbers-mode instead
 (when (version< emacs-version "26.1")
@@ -378,8 +379,7 @@ has been horizontally split."
   (let ((main-start (window-top-line main-win)))
     (catch 'split
       (dolist (win (window-list))
-        (when (and (not (perfect-margin--auto-margin-ignore-p win))
-                   (not (eq win main-win))
+        (when (and (not (eq win main-win))
                    (eq main-start (window-top-line win)))
           (throw 'split t)))
       nil)))
