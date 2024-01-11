@@ -254,14 +254,18 @@ If there are no cdr elements found, return nil for the max-second."
         (cl-some #'identity
                  (nconc (mapcar (lambda (regexp) (string-match-p regexp name)) perfect-margin-ignore-regexps)
                         (mapcar (lambda (func) (funcall func win)) perfect-margin-ignore-filters)))
-        (and (perfect-margin-with-minimap-p)
-             (or (string-match minimap-buffer-name (buffer-name (window-buffer win)))
-                 (perfect-margin--minimap-window-p win)))
-        (and (perfect-margin-with-treemacs-visible-p)
-             (eq win (treemacs-get-local-window)))
-        (and (perfect-margin-with-org-side-tree-p)
-             (with-current-buffer (window-buffer win)
-               (eq major-mode 'org-side-tree-mode))))))
+        (perfect-margin--supported-side-window-p win))))
+
+(defun perfect-margin--supported-side-window-p (win)
+  "Side window(WIN) that won't affect main window's margins."
+  (or (and (perfect-margin-with-minimap-p)
+           (or (string-match minimap-buffer-name (buffer-name (window-buffer win)))
+               (perfect-margin--minimap-window-p win)))
+      (and (perfect-margin-with-treemacs-visible-p)
+           (eq win (treemacs-get-local-window)))
+      (and (perfect-margin-with-org-side-tree-p)
+           (with-current-buffer (window-buffer win)
+             (eq major-mode 'org-side-tree-mode)))))
 
 ;;----------------------------------------------------------------------------
 ;; Minimap
@@ -379,7 +383,8 @@ has been horizontally split."
   (let ((main-start (window-top-line main-win)))
     (catch 'split
       (dolist (win (window-list))
-        (when (and (not (eq win main-win))
+        (when (and (not (perfect-margin--supported-side-window-p win))
+                   (not (eq win main-win))
                    (eq main-start (window-top-line win)))
           (throw 'split t)))
       nil)))
