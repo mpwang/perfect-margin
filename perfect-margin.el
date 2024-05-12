@@ -118,6 +118,17 @@
   :group 'perfect-margin
   :type 'boolean)
 
+(defcustom perfect-margin-disable-in-splittable-check nil
+  "Disable margins when `window-splittable-p' is called.
+
+When this option is enabled, `perfect-margin-mode' will temporarily remove
+the margins when `window-splittable-p' is called to determine if a window can
+be split.  This allows `split-window-sensibly' to split a window when its
+total width is sufficient, even if its visible width (excluding margins) is
+below the split threshold."
+  :group 'perfect-margin
+  :type 'boolean)
+
 (defcustom perfect-margin-ignore-regexps
   '("^minibuf" "^[[:space:]]*\\*")
   "List of strings to determine if window is ignored.
@@ -471,6 +482,23 @@ has been horizontally split."
     (when perfect-margin-hide-fringes
       (set-window-fringes win 0 0))))
 
+(defun perfect-margin--window-splittable-p-advice (orig-fun window &optional horizontal)
+  "Advice for `window-splittable-p' to temporarily remove margins when called.
+
+If WINDOW is not managed by perfect-margin, HORIZONTAL is nil,
+or `perfect-margin-disable-in-splittable-check' is nil,
+the function will not modify the margins and directly call ORIG-FUN."
+  (if (or (not horizontal)
+          (not perfect-margin-disable-in-splittable-check)
+          (perfect-margin--auto-margin-ignore-p window))
+      (funcall orig-fun window horizontal)
+    (let ((margins (window-margins window)))
+      (prog2
+          (set-window-margins window 0 (if perfect-margin-only-set-left-margin
+                                           (cdr margins) 0))
+          (funcall orig-fun window horizontal)
+        (set-window-margins window (car margins) (cdr margins))))))
+
 ;; I'm tired of a width-changing minimap on the right, just use a fixed width
 (defun perfect-margin--minimap-create-window-advice (orig-fun &rest args)
   "Advice to modify the behavior of `minimap-create-window'.
@@ -523,6 +551,7 @@ ORIG-FUN is `split-window-horizontally'."
         (when (fboundp 'minimap-mode)
           (add-hook 'window-configuration-change-hook 'perfect-margin--fix-minimap-width))
         (ad-activate 'split-window)
+        (advice-add 'window-splittable-p :around #'perfect-margin--window-splittable-p-advice)
         (add-hook 'window-configuration-change-hook 'perfect-margin-margin-windows)
         (add-hook 'window-size-change-functions 'perfect-margin-margin-frame)
         (perfect-margin-margin-windows))
@@ -538,6 +567,7 @@ ORIG-FUN is `split-window-horizontally'."
     (when (fboundp 'minimap-mode)
       (remove-hook 'window-configuration-change-hook 'perfect-margin--fix-minimap-width))
     (ad-deactivate 'split-window)
+    (advice-remove 'window-splittable-p #'perfect-margin--window-splittable-p-advice)
     (remove-hook 'window-configuration-change-hook 'perfect-margin-margin-windows)
     (remove-hook 'window-size-change-functions 'perfect-margin-margin-frame)
     (dolist (window (window-list))
