@@ -394,10 +394,11 @@ has been horizontally split."
   (let ((main-start (window-top-line main-win)))
     (catch 'split
       (dolist (win (window-list))
-        (when (and (not (perfect-margin--supported-side-window-p win))
-                   (not (eq win main-win))
-                   (eq main-start (window-top-line win)))
-          (throw 'split t)))
+        (unless (perfect-margin--auto-margin-ignore-p win)
+          (when (and (not (perfect-margin--supported-side-window-p win))
+                     (not (eq win main-win))
+                     (eq main-start (window-top-line win)))
+            (throw 'split t))))
       nil)))
 
 (defvar perfect-margin-margin-window-function-list
@@ -478,9 +479,10 @@ has been horizontally split."
 (defadvice split-window (before perfect-margin--disable-margins nil)
   "Adjust all existing windows before 'split-window' is called."
   (dolist (win (window-list))
-    (set-window-margins win 0 0)
-    (when perfect-margin-hide-fringes
-      (set-window-fringes win 0 0))))
+    (unless (perfect-margin--auto-margin-ignore-p win)
+      (set-window-margins win 0 0)
+      (when perfect-margin-hide-fringes
+        (set-window-fringes win 0 0)))))
 
 (defun perfect-margin--window-splittable-p-advice (orig-fun window &optional horizontal)
   "Advice for `window-splittable-p' to temporarily remove margins when called.
@@ -571,7 +573,8 @@ ORIG-FUN is `split-window-horizontally'."
     (remove-hook 'window-configuration-change-hook 'perfect-margin-margin-windows)
     (remove-hook 'window-size-change-functions 'perfect-margin-margin-frame)
     (dolist (window (window-list))
-      (set-window-margins window 0 0))))
+      (unless (perfect-margin--auto-margin-ignore-p window)
+        (set-window-margins window 0 0)))))
 
 (provide 'perfect-margin)
 
