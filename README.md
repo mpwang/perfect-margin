@@ -105,6 +105,34 @@ returning a non-nil value indicate to ignore the window."
   :group 'perfect-margin)
 ```
 
+## Customize to set margins for minibuffer
+
+When using minibuffer completion packages like **Vertico**, it would be nice to set
+the margin of minibuffer, while keeping other special buffers untoched.
+
+You can use this setting
+
+```lisp
+(after! perfect-margin
+  (setq perfect-margin-ignore-filters nil)
+  (setq perfect-margin-ignore-regexps '("^[[:space:]]*\\*(?!Minibuf)")))
+```
+
+This configuration does the following:
+
+1. It sets `perfect-margin-ignore-filters` to `nil` to allow processing minibuffer.
+
+2. It customizes `perfect-margin-ignore-regexps` with a regex that:
+   - Matches strings starting with zero or more whitespace characters, followed by an asterisk.
+   - Uses a negative lookahead `(?!Minibuf)` to exclude matches where "Minibuf" follows the asterisk.
+
+This regex will ignore buffers like `*Completions*` or `*Messages*`, but allow `*Minibuf-1*`, `*Minibuf-2*`, etc.
+
+If you want to allow other specific names as well, you can add them to the negative lookahead. For example, to also allow `*scratch*`:
+
+```lisp
+(setq perfect-margin-ignore-regexps '("^[[:space:]]*\\*(?!Minibuf|scratch)"))
+```
 
 ## Customize window fringes
 
