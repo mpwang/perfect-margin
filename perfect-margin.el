@@ -154,6 +154,14 @@ returning a non-nil value indicate to ignore the window."
   :type '(repeat symbol)
   :group 'perfect-margin)
 
+(defcustom perfect-margin-force-regexps
+  '()
+  "List of strings to force margins, even the window would be in the ignored list.
+
+Each string is used as regular expression to match the window buffer name."
+  :group 'perfect-margin
+  :type '(repeat regexp))
+
 (defcustom perfect-margin-enable-debug-log nil
   "Enable output debug log."
   :group 'perfect-margin
@@ -260,12 +268,14 @@ If there are no cdr elements found, return nil for the max-second."
   "Conditions for filtering window (WIN) to setup margin."
   (let* ((buffer (window-buffer win))
          (name (buffer-name buffer)))
-    (or (with-current-buffer buffer
-          (apply #'derived-mode-p perfect-margin-ignore-modes))
-        (cl-some #'identity
-                 (nconc (mapcar (lambda (regexp) (string-match-p regexp name)) perfect-margin-ignore-regexps)
-                        (mapcar (lambda (func) (funcall func win)) perfect-margin-ignore-filters)))
-        (perfect-margin--supported-side-window-p win))))
+    (and
+     (not (cl-some (lambda (regexp) (string-match-p regexp name)) perfect-margin-force-regexps))
+     (or (with-current-buffer buffer
+           (apply #'derived-mode-p perfect-margin-ignore-modes))
+         (cl-some #'identity
+                  (nconc (mapcar (lambda (regexp) (string-match-p regexp name)) perfect-margin-ignore-regexps)
+                         (mapcar (lambda (func) (funcall func win)) perfect-margin-ignore-filters)))
+         (perfect-margin--supported-side-window-p win)))))
 
 (defun perfect-margin--supported-side-window-p (win)
   "Side window(WIN) that won't affect main window's margins."
