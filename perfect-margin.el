@@ -264,18 +264,21 @@ If there are no cdr elements found, return nil for the max-second."
     (unless cdr-exists (setq max-second nil))
     (cons max-first max-second)))
 
+(defun perfect-margin--force-margin-p (win)
+   "If set margins of WIN unconditionaly."
+   (let ((name (buffer-name (window-buffer win))))
+     (cl-some (lambda (regexp) (string-match-p regexp name)) perfect-margin-force-regexps)))
+
 (defun perfect-margin--auto-margin-ignore-p (win)
   "Conditions for filtering window (WIN) to setup margin."
   (let* ((buffer (window-buffer win))
          (name (buffer-name buffer)))
-    (and
-     (not (cl-some (lambda (regexp) (string-match-p regexp name)) perfect-margin-force-regexps))
-     (or (with-current-buffer buffer
-           (apply #'derived-mode-p perfect-margin-ignore-modes))
-         (cl-some #'identity
-                  (nconc (mapcar (lambda (regexp) (string-match-p regexp name)) perfect-margin-ignore-regexps)
-                         (mapcar (lambda (func) (funcall func win)) perfect-margin-ignore-filters)))
-         (perfect-margin--supported-side-window-p win)))))
+    (or (with-current-buffer buffer
+          (apply #'derived-mode-p perfect-margin-ignore-modes))
+        (cl-some #'identity
+                 (nconc (mapcar (lambda (regexp) (string-match-p regexp name)) perfect-margin-ignore-regexps)
+                        (mapcar (lambda (func) (funcall func win)) perfect-margin-ignore-filters)))
+        (perfect-margin--supported-side-window-p win))))
 
 (defun perfect-margin--supported-side-window-p (win)
   "Side window(WIN) that won't affect main window's margins."
@@ -417,6 +420,30 @@ has been horizontally split."
     perfect-margin-org-side-tree-margin-window
     (lambda (win) (perfect-margin--init-window-margins))))
 
+
+(defun perfect-margin--set-win-margin (win main-win)
+  (if (< (window-total-width win) (window-total-width main-win))
+      (progn
+        (when perfect-margin-enable-debug-log
+          (message "%S margins reset" win))
+        (set-window-margins win  0 0))
+    (let ((margin-candidates (thread-last
+                               perfect-margin-margin-window-function-list
+                               (mapcar (lambda (f) (funcall f win)))
+                               (remove nil)
+                               (remove t))))
+      (when margin-candidates
+        (let ((min-margins (perfect-margin--get-min-margins margin-candidates))
+              (win-fringes (window-fringes win)))
+          (when perfect-margin-enable-debug-log
+            (message "%S candidaets: %S min-margins: %S" win margin-candidates min-margins))
+          (set-window-margins win (car min-margins) (cdr min-margins))
+          ;; draw the fringes inside the margin space
+          ;; for package like git-gutter-fringe to display indicator near the line number
+          (set-window-fringes win (nth 0 win-fringes) (nth 1 win-fringes) nil)))))
+  (when perfect-margin-hide-fringes
+    (set-window-fringes win 0 0)))
+
 (defun perfect-margin-margin-windows ()
   "Setup margins, keep the visible main window always at center."
   (let ((main-win (perfect-margin--main-window)))
@@ -426,31 +453,14 @@ has been horizontally split."
           (unless (perfect-margin--auto-margin-ignore-p win)
             (when perfect-margin-enable-debug-log
               (message "%S margins reset" win))
-            (set-window-margins win 0 0)))
+            (set-window-margins win 0 0))
+          (when (perfect-margin--force-margin-p win)
+            (perfect-margin--set-win-margin win main-win)))
       ;; set the margins for windows
       (dolist (win (window-list))
-        (unless (perfect-margin--auto-margin-ignore-p win)
-          (if (not (eq (window-total-width win) (window-total-width main-win)))
-              (progn
-                (when perfect-margin-enable-debug-log
-                  (message "%S margins reset" win))
-                (set-window-margins win  0 0))
-            (let ((margin-candidates (thread-last
-                                       perfect-margin-margin-window-function-list
-                                       (mapcar (lambda (f) (funcall f win)))
-                                       (remove nil)
-                                       (remove t))))
-              (when margin-candidates
-                (let ((min-margins (perfect-margin--get-min-margins margin-candidates))
-                      (win-fringes (window-fringes win)))
-                  (when perfect-margin-enable-debug-log
-                    (message "%S candidaets: %S min-margins: %S" win margin-candidates min-margins))
-                  (set-window-margins win (car min-margins) (cdr min-margins))
-                  ;; draw the fringes inside the margin space
-                  ;; for package like git-gutter-fringe to display indicator near the line number
-                  (set-window-fringes win (nth 0 win-fringes) (nth 1 win-fringes) nil)))))
-          (when perfect-margin-hide-fringes
-            (set-window-fringes win 0 0)))))))
+        (when (or (perfect-margin--force-margin-p win)
+                  (not (perfect-margin--auto-margin-ignore-p win)))
+          (perfect-margin--set-win-margin win main-win))))))
 
 (defun perfect-margin-margin-frame (&optional _)
   "Hook to resize window when frame size change."
