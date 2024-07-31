@@ -393,7 +393,7 @@ WIN will be any visible window, excluding the ignored windows."
   "Find the main window based on the largest width and height."
   (car
    (sort
-    (seq-filter (lambda (win) (not (perfect-margin--auto-margin-ignore-p win)))(window-list))
+    (window-list)
     (lambda (w1 w2)
       (> (* (window-total-width w1) (window-body-height w1))
          (* (window-total-width w2) (window-body-height w2)))))))
@@ -419,7 +419,6 @@ has been horizontally split."
     perfect-margin-treemacs-margin-window
     perfect-margin-org-side-tree-margin-window
     (lambda (win) (perfect-margin--init-window-margins))))
-
 
 (defun perfect-margin--set-win-margin (win main-win)
   (if (< (window-total-width win) (window-total-width main-win))
@@ -448,14 +447,15 @@ has been horizontally split."
   "Setup margins, keep the visible main window always at center."
   (let ((main-win (perfect-margin--main-window)))
     (if (perfect-margin--horizontally-split-main-window-p main-win)
-        ;; reset all windows if main window is horizontaly split
-        (dolist (win (window-list))
-          (unless (perfect-margin--auto-margin-ignore-p win)
-            (when perfect-margin-enable-debug-log
-              (message "%S margins reset" win))
-            (set-window-margins win 0 0))
-          (when (perfect-margin--force-margin-p win)
-            (perfect-margin--set-win-margin win main-win)))
+        (progn
+          ;; reset all windows if main window is horizontaly split
+          (dolist (win (window-list))
+            (if (perfect-margin--auto-margin-ignore-p win)
+                (when (perfect-margin--force-margin-p win)
+                  (perfect-margin--set-win-margin win main-win))
+              (when perfect-margin-enable-debug-log
+                (message "%S margins reset" win))
+              (set-window-margins win 0 0))))
       ;; set the margins for windows
       (dolist (win (window-list))
         (when (or (perfect-margin--force-margin-p win)
