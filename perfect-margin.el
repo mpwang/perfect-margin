@@ -106,7 +106,7 @@
 (defcustom perfect-margin-visible-width 128
   "The visible width of main window to be kept at center."
   :group 'perfect-margin
-  :type 'number)
+  :type '(choice (const :tag "fill-column" -1) number))
 
 (defcustom perfect-margin-hide-fringes nil
   "Whether to set both fringes in all windows to 0."
@@ -214,7 +214,7 @@ Each string is used as regular expression to match the window buffer name."
 
 (defun perfect-margin--init-window-margins ()
   "Calculate target window margins as if there is only one window on frame."
-  (let ((init-margin-width (round (max 0 (/ (- (frame-width) perfect-margin-visible-width) 2)))))
+  (let ((init-margin-width (round (max 0 (/ (- (frame-width) (if (> perfect-margin-visible-width 0) perfect-margin-visible-width fill-column)) 2)))))
     (cons
      init-margin-width
      (if perfect-margin-only-set-left-margin 0 init-margin-width))))
