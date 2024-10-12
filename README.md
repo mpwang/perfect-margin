@@ -63,6 +63,8 @@ Change `perfect-margin-visible-width` and `Apply and Save`. That's it.
 (setq perfect-margin-visible-width 128)
 ```
 
+set `perfect-margin-visible-width` to `-1` to use the `fill-column` value for visible width.
+
 By default both left and right margins are set, but in most cases setting only the left margin is sufficient as it allows for more display room on the right. Enable this option to only set the left margin of windows.
 
 ``` lisp
