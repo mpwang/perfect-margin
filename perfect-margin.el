@@ -106,7 +106,7 @@
 (defcustom perfect-margin-visible-width 128
   "The visible width of main window to be kept at center."
   :group 'perfect-margin
-  :type 'number)
+  :type '(choice (const :tag "fill-column" fill-column) number))
 
 (defcustom perfect-margin-hide-fringes nil
   "Whether to set both fringes in all windows to 0."
