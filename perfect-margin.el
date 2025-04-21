@@ -238,36 +238,27 @@ If NEW-RIGHT-MARGIN is non-nil, return it, otherwise use default value."
    (t (cdr (perfect-margin--init-window-margins)))))
 
 (defun perfect-margin--get-min-margins (margin-candidates)
-  "Find the maximums in the car and cdr positions of MARGIN-CANDIDATES.
-
-If there are no cdr elements found, return nil for the max-second."
+  "Find the minimums in the car and cdr positions of MARGIN-CANDIDATES."
   ;; Example usage:
   ;; (perfect-margin--get-min-margins '((3 . 7) (5 . 6)))
-  ;; It returns: (3 6)
-  ;; (perfect-margin--get-min-margins '((3 . 7) (5)))
-  ;; It returns: (3 nil)
-  ;; (perfect-margin--get-min-margins '((3) (5)))
-  ;; It returns: (3 nil)
-  (let ((max-first nil)
-        (max-second nil)
-        (cdr-exists nil))
+  ;; It returns: (3 . 6)
+  ;; (perfect-margin--get-min-margins '((3 . 7) (1 . 6) (8 . 2)))
+  ;; It returns: (1 . 2)
+  (let ((min-first nil)
+        (min-second nil))
     (dolist (pair margin-candidates)
       (let ((car-val (car pair))
             (cdr-val (cdr pair)))
-        (when (or (null max-first) (< car-val max-first))
-          (setq max-first car-val))
-        (when cdr-val
-          (setq cdr-exists t)
-          (when (or (null max-second) (< cdr-val max-second))
-            (setq max-second cdr-val)))))
-    ;; If no cdr exists then we set max-second to nil.
-    (unless cdr-exists (setq max-second nil))
-    (cons max-first max-second)))
+        (when (or (null min-first) (< car-val min-first))
+          (setq min-first car-val))
+        (when (or (null min-second) (< cdr-val min-second))
+          (setq min-second cdr-val))))
+    (cons min-first min-second)))
 
 (defun perfect-margin--force-margin-p (win)
-   "If set margins of WIN unconditionaly."
-   (let ((name (buffer-name (window-buffer win))))
-     (cl-some (lambda (regexp) (string-match-p regexp name)) perfect-margin-force-regexps)))
+  "If set margins of WIN unconditionaly."
+  (let ((name (buffer-name (window-buffer win))))
+    (cl-some (lambda (regexp) (string-match-p regexp name)) perfect-margin-force-regexps)))
 
 (defun perfect-margin--auto-margin-ignore-p (win)
   "Conditions for filtering window (WIN) to setup margin."
@@ -398,12 +389,12 @@ WIN will be any visible window, excluding the ignored windows."
       (> (* (window-total-width w1) (window-body-height w1))
          (* (window-total-width w2) (window-body-height w2)))))))
 
-(defun perfect-margin--horizontally-split-main-window-p (main-win)
-  "Check if the MAIN-WIN has been horizontally split.
+(defun perfect-margin--vertically-split-main-window-p (main-win)
+  "Check if the MAIN-WIN has been vertically split.
 
 checks if there is any other window that shares the same vertical start position
 as the main window. If such a window exists, it indicates that the main window
-has been horizontally split."
+has been vertically split."
   (let ((main-start (window-top-line main-win)))
     (catch 'split
       (dolist (win (window-list))
@@ -446,21 +437,19 @@ has been horizontally split."
 (defun perfect-margin-margin-windows ()
   "Setup margins, keep the visible main window always at center."
   (let ((main-win (perfect-margin--main-window)))
-    (if (perfect-margin--horizontally-split-main-window-p main-win)
-        (progn
-          ;; reset all windows if main window is horizontaly split
-          (dolist (win (window-list))
-            (if (perfect-margin--auto-margin-ignore-p win)
-                (when (perfect-margin--force-margin-p win)
-                  (perfect-margin--set-win-margin win main-win))
-              (when perfect-margin-enable-debug-log
-                (message "%S margins reset" win))
-              (set-window-margins win 0 0))))
+    (if (perfect-margin--vertically-split-main-window-p main-win)
+        ;; reset all windows if main window is vertically split
+        (dolist (win (window-list))
+          (cond
+           ((perfect-margin--force-margin-p win) (perfect-margin--set-win-margin win main-win))
+           ((perfect-margin--auto-margin-ignore-p win) nil)
+           (t (set-window-margins win 0 0))))
       ;; set the margins for windows
       (dolist (win (window-list))
-        (when (or (perfect-margin--force-margin-p win)
-                  (not (perfect-margin--auto-margin-ignore-p win)))
-          (perfect-margin--set-win-margin win main-win))))))
+        (cond
+         ((perfect-margin--force-margin-p win) (perfect-margin--set-win-margin win main-win))
+         ((perfect-margin--auto-margin-ignore-p win) nil)
+         (t (perfect-margin--set-win-margin win main-win)))))))
 
 (defun perfect-margin-margin-frame (&optional _)
   "Hook to resize window when frame size change."
