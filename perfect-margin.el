@@ -398,11 +398,10 @@ has been vertically split."
   (let ((main-start (window-top-line main-win)))
     (catch 'split
       (dolist (win (window-list))
-        (unless (perfect-margin--auto-margin-ignore-p win)
-          (when (and (not (perfect-margin--supported-side-window-p win))
-                     (not (eq win main-win))
-                     (eq main-start (window-top-line win)))
-            (throw 'split t))))
+        (when (and (not (perfect-margin--supported-side-window-p win))
+                   (not (eq win main-win))
+                   (eq main-start (window-top-line win)))
+          (throw 'split t)))
       nil)))
 
 (defvar perfect-margin-margin-window-function-list
