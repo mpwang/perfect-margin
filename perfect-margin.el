@@ -208,13 +208,51 @@ Each string is used as regular expression to match the window buffer name."
   (or (perfect-margin-with-linum-p)
       (perfect-margin-with-display-line-numbers-p)))
 
-(defun perfect-margin--default-left-margin ()
-  "Default left margin."
-  (if (perfect-margin--show-line-numbers-p) (if (perfect-margin-with-linum-p) 3 0) 0))
+(defun perfect-margin--line-number-width ()
+  "Return the width consumed by line number display in current buffer.
+For `display-line-numbers-mode', use the actual display width.
+For `linum-mode', calculate based on max line number with minimum of 3."
+  (cond
+   ;; Modern Emacs: display-line-numbers-mode uses a separate gutter
+   ((perfect-margin-with-display-line-numbers-p)
+    (if (fboundp 'line-number-display-width)
+        (ceiling (line-number-display-width 'columns))
+      ;; Fallback: estimate based on line count + 2 for padding
+      (+ 2 (floor (log (max 1 (line-number-at-pos (point-max))) 10)))))
+   ;; Legacy: linum-mode uses margin space
+   ((perfect-margin-with-linum-p)
+    (max 3 (1+ (floor (log (max 1 (line-number-at-pos (point-max))) 10)))))
+   (t 0)))
 
-(defun perfect-margin--init-window-margins ()
-  "Calculate target window margins as if there is only one window on frame."
-  (let ((init-margin-width (round (max 0 (/ (- (frame-width) (if (> perfect-margin-visible-width 0) perfect-margin-visible-width fill-column)) 2)))))
+(defun perfect-margin--default-left-margin ()
+  "Default left margin.
+For `linum-mode', returns the calculated width since linum uses margin space.
+For `display-line-numbers-mode', returns 0 since it uses a separate gutter."
+  (if (perfect-margin-with-linum-p)
+      (perfect-margin--line-number-width)
+    0))
+
+(defun perfect-margin--init-window-margins (&optional win)
+  "Calculate target window margins as if there is only one window on frame.
+Accounts for space consumed by `display-line-numbers-mode' gutter.
+If WIN is provided, check line numbers in that window's context.
+Uses `with-selected-window' because `line-number-display-width' requires
+the window to be selected, not just its buffer to be current."
+  (let* ((visible-width (if (> perfect-margin-visible-width 0)
+                            perfect-margin-visible-width
+                          fill-column))
+         (base-margin (round (max 0 (/ (- (frame-width) visible-width) 2))))
+         (line-num-width (if win
+                             (with-selected-window win
+                               (if (perfect-margin-with-display-line-numbers-p)
+                                   (perfect-margin--line-number-width)
+                                 0))
+                           (if (perfect-margin-with-display-line-numbers-p)
+                               (perfect-margin--line-number-width)
+                             0)))
+         ;; Subtract full line-num-width so content stays at same position
+         ;; when line numbers are toggled (margin + gutter = base-margin)
+         (init-margin-width (max 0 (- base-margin line-num-width))))
     (cons
      init-margin-width
      (if perfect-margin-only-set-left-margin 0 init-margin-width))))
@@ -235,7 +273,7 @@ If NEW-RIGHT-MARGIN is non-nil, return it, otherwise use default value."
   (cond
    (perfect-margin-only-set-left-margin (cdr (window-margins win)))
    (new-right-margin new-right-margin)
-   (t (cdr (perfect-margin--init-window-margins)))))
+   (t (cdr (perfect-margin--init-window-margins win)))))
 
 (defun perfect-margin--get-min-margins (margin-candidates)
   "Find the minimums in the car and cdr positions of MARGIN-CANDIDATES."
@@ -308,7 +346,7 @@ If NEW-RIGHT-MARGIN is non-nil, return it, otherwise use default value."
 
 WIN will be any visible window, excluding the ignored windows."
   (when (perfect-margin-with-minimap-p)
-    (let ((init-window-margins (perfect-margin--init-window-margins))
+    (let ((init-window-margins (perfect-margin--init-window-margins win))
           (win-edges (window-edges win)))
       (cond
        ;; minimap left adjacent
@@ -339,7 +377,7 @@ WIN will be any visible window, excluding the ignored windows."
 
 WIN will be any visible window, excluding the ignored windows."
   (when (perfect-margin-with-treemacs-visible-p)
-    (let ((init-window-margins (perfect-margin--init-window-margins))
+    (let ((init-window-margins (perfect-margin--init-window-margins win))
           (win-edges (window-edges win))
           (treemacs-window (treemacs-get-local-window)))
       (cond
@@ -357,7 +395,7 @@ WIN will be any visible window, excluding the ignored windows."
 
 WIN will be any visible window, excluding the ignored windows."
   (when (perfect-margin-with-org-side-tree-p)
-    (let* ((init-window-margins (perfect-margin--init-window-margins))
+    (let* ((init-window-margins (perfect-margin--init-window-margins win))
            (tree-buffer (org-side-tree-has-tree-p (window-buffer win)))
            (tree-window (if tree-buffer
                             (get-buffer-window tree-buffer)
@@ -408,7 +446,7 @@ has been vertically split."
   '(perfect-margin-minimap-margin-window
     perfect-margin-treemacs-margin-window
     perfect-margin-org-side-tree-margin-window
-    (lambda (win) (perfect-margin--init-window-margins))))
+    (lambda (win) (perfect-margin--init-window-margins win))))
 
 (defun perfect-margin--set-win-margin (win main-win)
   (if (< (window-total-width win) (window-total-width main-win))
@@ -460,11 +498,13 @@ has been vertically split."
 ;; Advice
 ;;----------------------------------------------------------------------------
 (defun perfect-margin--linum-format (line)
-  "Function for `linum-format' to set left margin for LINE to be 3 as maximum."
-  (propertize
-   (format (concat "%" (number-to-string (max 3 (length (number-to-string line)))) "d") line)
-   'face
-   'linum))
+  "Function for `linum-format' to format LINE with consistent width.
+Width is calculated based on max line number, with minimum of 3."
+  (let ((width (max 3 (1+ (floor (log (max 1 (line-number-at-pos (point-max))) 10))))))
+    (propertize
+     (format (concat "%" (number-to-string width) "d") line)
+     'face
+     'linum)))
 
 (defvar perfect-margin--linum-update-win-left-margin nil
   "Variable to store original window marings before `linum-update-window'.")
@@ -543,6 +583,12 @@ ORIG-FUN is `split-window-horizontally'."
 ;; MINOR mode definition
 ;;----------------------------------------------------------------------------
 ;;;###autoload
+(defun perfect-margin--on-display-line-numbers-toggle ()
+  "Handler for `display-line-numbers-mode' toggle.
+Recalculates margins when line numbers are turned on or off."
+  (when perfect-margin-mode
+    (perfect-margin-margin-windows)))
+
 (define-minor-mode perfect-margin-mode
   "Auto center windows."
   :init-value nil
@@ -564,6 +610,8 @@ ORIG-FUN is `split-window-horizontally'."
         (advice-add 'window-splittable-p :around #'perfect-margin--window-splittable-p-advice)
         (add-hook 'window-configuration-change-hook 'perfect-margin-margin-windows)
         (add-hook 'window-size-change-functions 'perfect-margin-margin-frame)
+        ;; Recalculate margins when line numbers are toggled
+        (add-hook 'display-line-numbers-mode-hook #'perfect-margin--on-display-line-numbers-toggle)
         (perfect-margin-margin-windows))
     ;; remove hook and restore margin
     (when (perfect-margin-with-linum-p)
@@ -580,6 +628,7 @@ ORIG-FUN is `split-window-horizontally'."
     (advice-remove 'window-splittable-p #'perfect-margin--window-splittable-p-advice)
     (remove-hook 'window-configuration-change-hook 'perfect-margin-margin-windows)
     (remove-hook 'window-size-change-functions 'perfect-margin-margin-frame)
+    (remove-hook 'display-line-numbers-mode-hook #'perfect-margin--on-display-line-numbers-toggle)
     (dolist (window (window-list))
       (unless (perfect-margin--auto-margin-ignore-p window)
         (set-window-margins window 0 0)))))
